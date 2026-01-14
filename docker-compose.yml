@@ -1,0 +1,27 @@
+version: '3.8'
+# Compose stack: builds app image, runs server with persistent SQLite volume.
+
+services:
+  app:
+    build: .
+    image: cheffs-app:latest
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
+      DATA_DIR: /data/data.db
+    volumes:
+      - cheffs-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  cheffs-data:
+    driver: local

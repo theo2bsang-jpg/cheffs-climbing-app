@@ -1,0 +1,41 @@
+name: Dependency Scan
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  schedule:
+    - cron: '0 3 * * 0'
+
+jobs:
+  server-audit:
+    name: Server npm audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install server dependencies
+        run: |
+          cd server
+          npm ci
+      - name: Run npm audit (server)
+        run: |
+          cd server
+          npm audit --audit-level=moderate || true
+
+  root-audit:
+    name: Root npm audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install root dependencies
+        run: npm ci || true
+      - name: Run npm audit (root)
+        run: npm audit --audit-level=moderate || true

@@ -185,13 +185,13 @@ export default function SprayWallCreate() {
           )}
 
           {step === 3 && (
-            <Card className="border-green-300 bg-green-50">
+            <Card>
               <CardContent className="pt-6">
                 <div className="text-center mb-4">
-                  <p className="text-lg font-semibold text-green-900">
+                  <p className="text-lg font-semibold text-slate-900">
                     ✅ Lieu prêt à être créé
                   </p>
-                  <p className="text-sm text-green-700">
+                  <p className="text-sm text-slate-700">
                     {holds.length} prises placées
                   </p>
                 </div>

@@ -28,3 +28,5 @@ dist-ssr
 /server/admin-password.txt
 /server/data.db
 /server/*.env
+/data/
+data.db

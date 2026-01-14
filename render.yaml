@@ -26,8 +26,8 @@ services:
       - key: ALLOWED_ORIGINS
         sync: false
       - key: DATA_DIR
-        value: /var/data/data.db
+        value: ./data/data.db
     disk:
       name: cheffs-data
-      mountPath: /var/data
+      mountPath: /opt/render/project/data
       sizeGB: 1

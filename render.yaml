@@ -20,14 +20,14 @@ services:
       - key: REFRESH_COOKIE_NAME
         value: cheffs_refresh
       - key: ADMIN_EMAIL
-        value: admin@example.com
+        sync: false
       - key: ADMIN_PASSWORD
         sync: false
       - key: ALLOWED_ORIGINS
         sync: false
       - key: DATA_DIR
-        value: /data/data.db
+        value: /var/data/data.db
     disk:
       name: cheffs-data
-      mountPath: /data
+      mountPath: /var/data
       sizeGB: 1

@@ -64,7 +64,7 @@
    - New → Static Site
    - Connect same GitHub repo
    - Name: `cheffs-frontend`
-   - Build Command: `npm install && npm run build`
+   - Build Command: `npm install --include=dev && npm run build`
    - Publish Directory: `dist`
 
 2. **Add Rewrite Rule:**

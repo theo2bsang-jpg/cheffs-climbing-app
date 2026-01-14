@@ -36,7 +36,7 @@ services:
   - type: web
     name: cheffs-frontend
     runtime: static
-    buildCommand: npm install && npm run build
+    buildCommand: npm install --include=dev && npm run build
     staticPublishPath: ./dist
     envVars:
       - key: NODE_VERSION

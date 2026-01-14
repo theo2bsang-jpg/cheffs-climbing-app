@@ -188,10 +188,10 @@ export default function SprayWallCreate() {
             <Card>
               <CardContent className="pt-6">
                 <div className="text-center mb-4">
-                  <p className="text-lg font-semibold text-slate-900">
+                  <p className="text-lg font-semibold" style={{color: '#0f172a'}}>
                     ✅ Lieu prêt à être créé
                   </p>
-                  <p className="text-sm text-slate-700">
+                  <p className="text-sm" style={{color: '#334155'}}>
                     {holds.length} prises placées
                   </p>
                 </div>

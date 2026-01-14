@@ -37,7 +37,9 @@ app.use(helmet());
 // Always include this server's own origin to avoid blocking same-origin asset/API requests.
 const defaultAllowed = ['http://localhost:5173'];
 const serverOrigin = `http://localhost:${PORT}`;
-const allowedOrigins = Array.from(new Set((process.env.ALLOWED_ORIGINS || defaultAllowed.join(',')).split(',').map(s => s.trim()).filter(Boolean).concat([serverOrigin])));
+// Parse ALLOWED_ORIGINS env variable strictly - no auto-allow
+const envOrigins = (process.env.ALLOWED_ORIGINS || defaultAllowed.join(',')).split(',').map(s => s.trim()).filter(Boolean);
+const allowedOrigins = Array.from(new Set(envOrigins.concat([serverOrigin])));
 app.use(express.json());
 app.use(cookieParser());
 // Apply CORS only to API routes to avoid breaking static asset serving
@@ -45,7 +47,9 @@ app.use('/api', cors({
   origin: (origin, callback) => {
     // allow non-browser requests (curl, server-to-server)
     if (!origin) return callback(null, true);
+    // Check if origin matches allowed list - strict matching only
     if (allowedOrigins.includes(origin)) return callback(null, true);
+    console.warn(`CORS rejected origin: ${origin}. Allowed origins: ${allowedOrigins.join(', ')}`);
     return callback(new Error('CORS policy: origin not allowed'));
   },
   credentials: true,

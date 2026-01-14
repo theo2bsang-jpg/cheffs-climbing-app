@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^11.7.0",
+    "better-sqlite3": "^12.6.0",
     "cheffs-appli": "file:..",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",

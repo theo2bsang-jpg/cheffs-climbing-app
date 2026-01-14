@@ -248,6 +248,62 @@ app.delete('/api/auth/sessions/:id', authMiddleware, (req, res) => {
   const id = Number(req.params.id);
   const tokenRow = getRefreshTokenById(id);
   if (!tokenRow) return res.status(404).json({ error: 'Session not found' });
+  if (tokenRow.user_id !== req.user.id && !req.user.is_global_admin) return res.status(403).json({ error: 'Forbidden' });
+  deleteRefreshTokenById(id);
+  res.json({ success: true });
+});
+
+// Recovery endpoint: Reset admin password with recovery token
+// Usage: POST /api/auth/recovery with { recovery_token, new_password }
+app.post('/api/auth/recovery', (req, res) => {
+  const { recovery_token, new_password, admin_email } = req.body;
+  
+  // Require recovery token from environment
+  if (!process.env.RECOVERY_TOKEN) {
+    return res.status(503).json({ error: 'Recovery disabled: RECOVERY_TOKEN not configured' });
+  }
+  
+  // Validate recovery token
+  if (!recovery_token || recovery_token !== process.env.RECOVERY_TOKEN) {
+    return res.status(401).json({ error: 'Invalid recovery token' });
+  }
+  
+  // Validate new password
+  if (!new_password || new_password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+  
+  // Get or create admin user
+  const email = (admin_email || process.env.ADMIN_EMAIL || 'admin@example.com').toLowerCase();
+  let user = getUserByEmail(email);
+  
+  // Hash new password
+  const salt = bcrypt.genSaltSync(10);
+  const hash = bcrypt.hashSync(new_password, salt);
+  const now = Date.now();
+  
+  if (!user) {
+    // Create new admin
+    user = createUser({
+      email,
+      full_name: 'Admin',
+      password_hash: hash,
+      password_salt: salt,
+      is_global_admin: 1
+    });
+    console.log(`Recovery: Created new admin user: ${email}`);
+  } else {
+    // Update existing admin
+    user = updateUserByEmail(email, {
+      password_hash: hash,
+      password_salt: salt,
+      is_global_admin: 1
+    });
+    console.log(`Recovery: Reset admin password for: ${email}`);
+  }
+  
+  res.json({ success: true, message: `Admin password reset for ${email}` });
+});
   // Only owner or admin can delete
   if (tokenRow.user_id !== req.user.id && !req.user.is_global_admin) return res.status(403).json({ error: 'Forbidden' });
   try {

@@ -10,15 +10,19 @@ dotenv.config();
 // Allow overriding DB file location via DATA_DIR env (useful for containers/volumes)
 // If not set, place the DB in the current working directory (usually the `server` folder)
 const DB_FILE = process.env.DATA_DIR
-  ? path.resolve(process.cwd(), process.env.DATA_DIR)
+  ? (process.env.DATA_DIR.startsWith('/') ? process.env.DATA_DIR : path.resolve(process.cwd(), process.env.DATA_DIR))
   : path.resolve(process.cwd(), 'data.db');
 
 // Ensure parent directory exists before opening the DB (prevents better-sqlite3 EINVAL)
 try {
   const dir = path.dirname(DB_FILE);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    console.log('Created database directory:', dir);
+  }
 } catch (e) {
-  // If mkdir fails, opening the DB will reveal the error later
+  console.error('Failed to create database directory:', e.message);
+  throw e;
 }
 const needInit = !fs.existsSync(DB_FILE);
 const db = new Database(DB_FILE);

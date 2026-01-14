@@ -32,6 +32,7 @@ const REFRESH_COOKIE_NAME = process.env.REFRESH_COOKIE_NAME || 'cheffs_refresh';
 
 // Security middleware
 app.use(helmet());
+app.set('trust proxy', 1); // Trust proxy headers from Render
 
 // CORS: restrict to allowed origins provided in ALLOWED_ORIGINS env (comma-separated)
 // Always include this server's own origin to avoid blocking same-origin asset/API requests.

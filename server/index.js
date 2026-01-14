@@ -304,6 +304,12 @@ app.post('/api/auth/recovery', (req, res) => {
   
   res.json({ success: true, message: `Admin password reset for ${email}` });
 });
+
+// Revoke a session by id (current user or admin)
+app.delete('/api/auth/sessions/:id', authMiddleware, (req, res) => {
+  const id = Number(req.params.id);
+  const tokenRow = getRefreshTokenById(id);
+  if (!tokenRow) return res.status(404).json({ error: 'Session not found' });
   // Only owner or admin can delete
   if (tokenRow.user_id !== req.user.id && !req.user.is_global_admin) return res.status(403).json({ error: 'Forbidden' });
   try {

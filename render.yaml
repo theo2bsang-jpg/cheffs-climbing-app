@@ -1,12 +1,12 @@
 services:
-  # Backend API Service
+  # Backend API Service (also serves frontend static files)
   - type: web
-    name: cheffs-api
+    name: cheffs-app
     runtime: node
     env: node
     region: frankfurt
     plan: free
-    buildCommand: npm install && cd server && npm install && cd ..
+    buildCommand: npm run build && npm install && cd server && npm install
     startCommand: node server/index.js
     envVars:
       - key: NODE_ENV
@@ -31,17 +31,3 @@ services:
       name: cheffs-data
       mountPath: /data
       sizeGB: 1
-
-  # Frontend Static Site
-  - type: web
-    name: cheffs-frontend
-    runtime: static
-    buildCommand: npm install && npm run build
-    staticPublishPath: ./dist
-    envVars:
-      - key: NODE_VERSION
-        value: 18.0.0
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html

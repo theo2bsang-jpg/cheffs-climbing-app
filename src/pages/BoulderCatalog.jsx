@@ -186,9 +186,9 @@ export default function BoulderCatalog() {
                   );
                 })}
                 {boulders.length === 0 && (
-                  <Card className="text-center p-6 bg-blue-50">
+                  <Card className="text-center p-6 bg-white">
                     <CardContent>
-                        <p className="text-[#0b1220] text-sm font-semibold">
+                        <p style={{color: '#0f172a'}} className="text-sm font-semibold">
                         Aucun bloc dans ce spray wall
                       </p>
                     </CardContent>

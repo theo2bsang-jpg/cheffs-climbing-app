@@ -342,6 +342,7 @@ app.post('/api/users', authMiddleware, requireAdmin, (req, res) => {
   const salt = bcrypt.genSaltSync(10);
   const hash = bcrypt.hashSync(password, salt);
   const user = createUser({ email: String(email).trim().toLowerCase(), full_name: full_name || email, password_hash: hash, is_global_admin: is_global_admin ? 1 : 0 });
+  console.log(`[CREATE] User created: ${user.email} (admin: ${user.is_global_admin}) by ${req.user.email}`);
   res.json({ user: sanitizeUser(user) });
 });
 
@@ -353,6 +354,7 @@ app.patch('/api/users/:email', authMiddleware, (req, res) => {
   // Allow users to update their own profile, or admins to update any profile
   if (req.user.email !== email && !req.user.is_global_admin) return res.status(403).json({ error: 'Forbidden' });
   const updated = updateUserByEmail(email, patch);
+  console.log(`[UPDATE] User updated: ${email} by ${req.user.email}`);
   res.json({ user: sanitizeUser(updated) });
 });
 
@@ -360,33 +362,45 @@ app.delete('/api/users/:email', authMiddleware, requireAdmin, (req, res) => {
   const email = String(req.params.email).trim().toLowerCase();
   const removed = deleteUserByEmail(email);
   if (!removed) return res.status(404).json({ error: 'User not found' });
+  console.log(`[DELETE] User deleted: ${email} by ${req.user.email}`);
   res.json({ user: sanitizeUser(removed) });
 });
 
 // --- Entities routes ---
 // Boulders
 app.get('/api/boulders', (req, res) => res.json({ boulders: listBoulders() }));
-app.post('/api/boulders', authMiddleware, (req, res) => res.json({ boulder: createBoulder(req.body) }));
+app.post('/api/boulders', authMiddleware, (req, res) => {
+  const boulder = createBoulder(req.body);
+  console.log(`[CREATE] Boulder created: ID ${boulder.id}, "${boulder.nom}", niveau ${boulder.niveau} by ${req.user.email}`);
+  res.json({ boulder });
+});
 app.patch('/api/boulders/:id', authMiddleware, (req, res) => {
   const id = Number(req.params.id);
   const updated = updateBoulder(id, req.body || {});
   if (!updated) return res.status(404).json({ error: 'Not found' });
+  console.log(`[UPDATE] Boulder updated: ID ${id}, "${updated.nom}" by ${req.user.email}`);
   res.json({ boulder: updated });
 });
 app.delete('/api/boulders/:id', authMiddleware, (req, res) => {
   const id = Number(req.params.id);
   const removed = deleteBoulder(id);
   if (!removed) return res.status(404).json({ error: 'Not found' });
+  console.log(`[DELETE] Boulder deleted: ID ${id} by ${req.user.email}`);
   res.json(removed);
 });
 
 // ContiBoucles
 app.get('/api/contiBoucles', (req, res) => res.json({ contiBoucles: listContiBoucles() }));
-app.post('/api/contiBoucles', authMiddleware, (req, res) => res.json({ contiBoucle: createContiBoucle(req.body) }));
+app.post('/api/contiBoucles', authMiddleware, (req, res) => {
+  const contiBoucle = createContiBoucle(req.body);
+  console.log(`[CREATE] Conti boucle created: ID ${contiBoucle.id}, "${contiBoucle.nom}" by ${req.user.email}`);
+  res.json({ contiBoucle });
+});
 app.patch('/api/contiBoucles/:id', authMiddleware, (req, res) => {
   const id = Number(req.params.id);
   const updated = updateContiBoucle(id, req.body || {});
   if (!updated) return res.status(404).json({ error: 'Not found' });
+  console.log(`[UPDATE] Conti boucle updated: ID ${id}, "${updated.nom}" by ${req.user.email}`);
   res.json({ contiBoucle: updated });
 });
 app.delete('/api/contiBoucles/:id', authMiddleware, (req, res) => {
@@ -462,48 +476,68 @@ app.delete('/api/voieMax/:id', authMiddleware, (req, res) => {
 
 // BelleOuvertures
 app.get('/api/belleOuvertures', (req, res) => res.json({ belleOuvertures: listBelleOuvertures() }));
-app.post('/api/belleOuvertures', authMiddleware, (req, res) => res.json({ belle: createBelleOuverture(req.body) }));
+app.post('/api/belleOuvertures', authMiddleware, (req, res) => {
+  const belle = createBelleOuverture(req.body);
+  console.log(`[CREATE] Belle ouverture created: ID ${belle.id}, "${belle.nom}" by ${req.user.email}`);
+  res.json({ belle });
+});
 app.patch('/api/belleOuvertures/:id', authMiddleware, (req, res) => {
   const id = Number(req.params.id);
   const updated = updateBelleOuverture(id, req.body || {});
   if (!updated) return res.status(404).json({ error: 'Not found' });
+  console.log(`[UPDATE] Belle ouverture updated: ID ${id}, "${updated.nom}" by ${req.user.email}`);
   res.json({ belle: updated });
 });
 app.delete('/api/belleOuvertures/:id', authMiddleware, (req, res) => {
   const id = Number(req.params.id);
   const removed = deleteBelleOuverture(id);
   if (!removed) return res.status(404).json({ error: 'Not found' });
+  console.log(`[DELETE] Belle ouverture deleted: ID ${id} by ${req.user.email}`);
   res.json(removed);
 });
 
 // Lieux: spray walls and holds
 app.get('/api/sprayWalls', (req, res) => res.json({ sprayWalls: listSprayWalls() }));
-app.post('/api/sprayWalls', authMiddleware, (req, res) => res.json({ sprayWall: createSprayWall(req.body) }));
+app.post('/api/sprayWalls', authMiddleware, (req, res) => {
+  const sprayWall = createSprayWall(req.body);
+  console.log(`[CREATE] Spray wall created: ID ${sprayWall.id}, "${sprayWall.nom}" at ${sprayWall.lieu} by ${req.user.email}`);
+  res.json({ sprayWall });
+});
 app.patch('/api/sprayWalls/:id', authMiddleware, (req, res) => {
   const id = Number(req.params.id);
   const updated = updateSprayWall(id, req.body || {});
   if (!updated) return res.status(404).json({ error: 'Not found' });
+  console.log(`[UPDATE] Spray wall updated: ID ${id}, "${updated.nom}" by ${req.user.email}`);
   res.json({ sprayWall: updated });
 });
 app.delete('/api/sprayWalls/:id', authMiddleware, (req, res) => {
   const id = Number(req.params.id);
   const removed = deleteSprayWall(id);
   if (!removed) return res.status(404).json({ error: 'Not found' });
+  console.log(`[DELETE] Spray wall deleted: ID ${id} by ${req.user.email}`);
   res.json(removed);
 });
 
 app.get('/api/holds', (req, res) => res.json({ holds: listHolds() }));
-app.post('/api/holds', authMiddleware, (req, res) => res.json({ hold: createHold(req.body) }));
+app.post('/api/holds', authMiddleware, (req, res) => {
+  const hold = createHold(req.body);
+  console.log(`[CREATE] Hold created: ID ${hold.id}, "${hold.nom}" on spray wall ${hold.spray_wall_id} by ${req.user.email}`);
+  res.json({ hold });
+});
 app.patch('/api/holds/:id', authMiddleware, (req, res) => {
   const id = Number(req.params.id);
   const updated = updateHold(id, req.body || {});
   if (!updated) return res.status(404).json({ error: 'Not found' });
+  console.log(`[UPDATE] Hold updated: ID ${id}, "${updated.nom}" by ${req.user.email}`);
+  res.json({ hold: updated });
+});
   res.json({ hold: updated });
 });
 app.delete('/api/holds/:id', authMiddleware, (req, res) => {
   const id = Number(req.params.id);
   const removed = deleteHold(id);
   if (!removed) return res.status(404).json({ error: 'Not found' });
+  console.log(`[DELETE] Hold deleted: ID ${id} by ${req.user.email}`);
   res.json(removed);
 });
 

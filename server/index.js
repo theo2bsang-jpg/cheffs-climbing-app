@@ -531,8 +531,6 @@ app.patch('/api/holds/:id', authMiddleware, (req, res) => {
   console.log(`[UPDATE] Hold updated: ID ${id}, "${updated.nom}" by ${req.user.email}`);
   res.json({ hold: updated });
 });
-  res.json({ hold: updated });
-});
 app.delete('/api/holds/:id', authMiddleware, (req, res) => {
   const id = Number(req.params.id);
   const removed = deleteHold(id);

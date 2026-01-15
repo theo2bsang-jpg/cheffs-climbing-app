@@ -3,7 +3,7 @@ import { BelleOuverture, User } from "@/api/entities";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { ArrowLeft, Mountain, Search, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Mountain, Search, Plus, Trash2, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -47,13 +47,16 @@ export default function BelleOuvertureCatalog() {
   const isAdmin = user?.is_global_admin;
 
   const { data: bellesOuvertures = [] } = useQuery({
-    queryKey: ['bellesOuvertures'],
-    queryFn: () => BelleOuverture.list(),
+    queryKey: ['bellesOuvertures', sprayWallId],
+    queryFn: () => sprayWallId 
+      ? BelleOuverture.filter({ spray_wall_id: parseInt(sprayWallId) })
+      : BelleOuverture.list(),
   });
 
-  const filteredByWall = sprayWallId
-    ? bellesOuvertures.filter(b => String(b.spray_wall_id) === String(sprayWallId))
-    : bellesOuvertures;
+  console.log('Belle Ouvertures data:', bellesOuvertures);
+  console.log('Spray Wall ID:', sprayWallId);
+
+  const filteredByWall = bellesOuvertures;
 
   // Admin delete entry and refresh list
   const deleteMutation = useMutation({
@@ -85,10 +88,15 @@ export default function BelleOuvertureCatalog() {
 
   const filteredOuvertures = searchTerm
     ? filteredByWall.filter(b => b.nom.toLowerCase().includes(searchTerm.toLowerCase()))
-    : [];
+    : filteredByWall;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-pink-50 p-4">
+      <style>{`
+        .belle-ouverture-search h3 {
+          color: #000000 !important;
+        }
+      `}</style>
       <div className="max-w-2xl mx-auto pt-6 pb-20">
           <Link to={createPageUrl("SprayWallDashboard") + (sprayWallId ? `?id=${sprayWallId}` : '')}>
           <Button variant="outline" className="mb-4 bg-purple-900 text-white border-purple-700 hover:bg-purple-800">
@@ -107,7 +115,7 @@ export default function BelleOuvertureCatalog() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Rechercher une belle ouverture..."
-            className="pl-12 text-lg h-14 border-2 border-pink-300 focus:border-pink-500"
+            className="pl-12 text-lg h-14 border-2 border-pink-300 focus:border-pink-500 text-slate-900"
           />
         </div>
 
@@ -129,30 +137,36 @@ export default function BelleOuvertureCatalog() {
               {filteredOuvertures.map(ouverture => (
                 <Card key={ouverture.id} className="hover:shadow-lg transition-all border-2 border-pink-200">
                   <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-start justify-between gap-3">
                       <Link 
                         to={createPageUrl("BelleOuvertureView") + `?id=${ouverture.id}` + (sprayWallId ? `&spraywall=${sprayWallId}` : '')}
                         className="flex-1"
                       >
-                        <div>
-                          <h3 className="font-bold text-slate-900">{ouverture.nom}</h3>
-                          <p className="text-sm text-gray-600">{ouverture.ouvreur}</p>
+                        <div className="belle-ouverture-search" style={{ color: '#000000' }}>
+                          <h3 className="font-bold">{ouverture.nom}</h3>
+                          <p className="text-sm" style={{ color: '#000000' }}>{ouverture.ouvreur}</p>
                           <LevelBadge niveau={ouverture.niveau} className="mt-1" />
                         </div>
                       </Link>
                       {isAdmin && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleDelete(ouverture);
-                          }}
-                          className="text-red-600 hover:bg-red-50 ml-2"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <div className="flex gap-2">
+                          <Link to={createPageUrl("BelleOuvertureEdit") + `?id=${ouverture.id}` + (sprayWallId ? `&spraywall=${sprayWallId}` : '')}>
+                            <Button variant="outline" size="sm">
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                          </Link>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleDelete(ouverture);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </CardContent>
@@ -181,7 +195,7 @@ export default function BelleOuvertureCatalog() {
                   key={niveau}
                   to={createPageUrl("BelleOuvertureList") + `?spraywall=${sprayWallId}&niveau=${encodeURIComponent(niveau)}`}
                 >
-                  <Card className="hover:shadow-lg transition-all hover:scale-102 cursor-pointer border-2 border-pink-200">
+                  <Card className="hover:shadow-lg transition-all hover:scale-102 cursor-pointer border-2 border-pink-200 mb-4">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">

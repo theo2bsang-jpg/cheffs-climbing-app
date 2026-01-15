@@ -40,6 +40,8 @@ import BelleOuvertureCatalog from "./BelleOuvertureCatalog";
 
 import BelleOuvertureCreate from "./BelleOuvertureCreate";
 
+import BelleOuvertureEdit from "./BelleOuvertureEdit";
+
 import BelleOuvertureView from "./BelleOuvertureView";
 
 import BelleOuvertureList from "./BelleOuvertureList";
@@ -89,6 +91,8 @@ const PAGES = {
     BelleOuvertureCatalog: BelleOuvertureCatalog,
     
     BelleOuvertureCreate: BelleOuvertureCreate,
+    
+    BelleOuvertureEdit: BelleOuvertureEdit,
     
     BelleOuvertureView: BelleOuvertureView,
     
@@ -161,6 +165,8 @@ function PagesContent() {
                 <Route path="/BelleOuvertureCatalog" element={<BelleOuvertureCatalog />} />
                 
                 <Route path="/BelleOuvertureCreate" element={<BelleOuvertureCreate />} />
+                
+                <Route path="/BelleOuvertureEdit" element={<BelleOuvertureEdit />} />
                 
                 <Route path="/BelleOuvertureView" element={<BelleOuvertureView />} />
                 

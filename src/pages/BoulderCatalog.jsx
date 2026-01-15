@@ -86,51 +86,51 @@ export default function BoulderCatalog() {
         </div>
 
         {searchTerm && (
-          <div className="mb-8">
+          <div className="mb-8 space-y-4">
             <h2 className="text-lg font-semibold text-slate-700 mb-3">
               Résultats de recherche : {filteredBoulders.length + filteredBoucles.length}
             </h2>
-            <div className="space-y-4">
-              {filteredBoulders.map(boulder => (
-                <Link key={boulder.id} to={createPageUrl("BoulderView") + `?id=${boulder.id}`}>
-                  <Card className="hover:shadow-lg transition-all border-4">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-purple-900">{boulder.nom}</h3>
-                            {(boulder.prise_remplacee || hasDeletedHolds(boulder)) && (
-                              <span className="text-red-600 text-xl">⚠️</span>
-                            )}
+            <div>
+              {filteredBoulders.map((boulder, idx) => (
+                <Link key={`boulder-${boulder.id}-${idx}`} to={createPageUrl("BoulderView") + `?id=${boulder.id}`}>
+                  <div className="rounded-xl bg-card text-card-foreground shadow hover:shadow-lg transition-all border-4 mb-4">
+                    <div className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-bold text-purple-900">{boulder.nom}</h3>
+                              {(boulder.prise_remplacee || hasDeletedHolds(boulder)) && (
+                                <span className="text-red-600 text-xl">⚠️</span>
+                              )}
+                            </div>
+                            <LevelBadge niveau={boulder.niveau} className="mt-1" />
                           </div>
-                          <LevelBadge niveau={boulder.niveau} className="mt-1" />
+                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Bloc</span>
                         </div>
-                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Bloc</span>
                       </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-              {filteredBoucles.map(boucle => (
-                <Link key={boucle.id} to={createPageUrl("ContiBoucleView") + `?id=${boucle.id}`}>
-                  <Card className="rounded-xl bg-card text-card-foreground shadow hover:shadow-lg transition-all border-4 border-yellow-300">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-purple-900">{boucle.nom}</h3>
-                            {(boucle.prise_remplacee || hasDeletedHolds(boucle)) && (
-                              <span className="text-red-600 text-xl">⚠️</span>
-                            )}
+                    </div>
+                  </Link>
+                ))}
+              {filteredBoucles.map((boucle, idx) => (
+                <Link key={`boucle-${boucle.id}-${idx}`} to={createPageUrl("ContiBoucleView") + `?id=${boucle.id}`}>
+                  <div className="rounded-xl bg-card text-card-foreground shadow hover:shadow-lg transition-all border-4 border-yellow-300 mb-4">
+                    <div className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-bold text-purple-900">{boucle.nom}</h3>
+                              {(boucle.prise_remplacee || hasDeletedHolds(boucle)) && (
+                                <span className="text-red-600 text-xl">⚠️</span>
+                              )}
+                            </div>
+                            <LevelBadge niveau={boucle.niveau} className="mt-1" />
                           </div>
-                          <LevelBadge niveau={boucle.niveau} className="mt-1" />
+                          <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Boucle</span>
                         </div>
-                        <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Boucle</span>
                       </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
+                    </div>
+                  </Link>
+                ))}
               {filteredBoulders.length === 0 && filteredBoucles.length === 0 && (
                 <Card className="text-center p-6">
                   <CardContent>
@@ -214,8 +214,8 @@ export default function BoulderCatalog() {
                       key={niveau}
                       to={createPageUrl("BoulderList") + `?spraywall=${sprayWallId}&niveau=${encodeURIComponent(niveau)}&type=boucle`}
                     >
-                      <Card className="hover:shadow-lg transition-all hover:scale-102 cursor-pointer border-4 border-yellow-200">
-                        <CardContent className="p-4">
+                      <div className="rounded-xl bg-card text-card-foreground shadow hover:shadow-lg transition-all hover:scale-102 cursor-pointer border-4 border-yellow-200 mb-4">
+                        <div className="p-4">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                               <Mountain className="w-6 h-6 text-yellow-600" />
@@ -233,8 +233,8 @@ export default function BoulderCatalog() {
                               {bouclesCount}
                             </div>
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     </Link>
                   );
                 })}

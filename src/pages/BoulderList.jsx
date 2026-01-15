@@ -50,7 +50,7 @@ export default function BoulderList() {
 
   const queryClient = useQueryClient();
   const [user, setUser] = useState(null);
-  const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null, label: null });
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null, label: null, type: null });
 
   /** Load user to gate admin-only delete actions. */
   useEffect(() => {
@@ -73,6 +73,22 @@ export default function BoulderList() {
     onSuccess: () => {
       queryClient.invalidateQueries(['boulders']);
       toast.success('Bloc supprimé');
+      setDeleteDialog({ open: false, id: null, label: null });
+    },
+    onError: (err) => {
+      toast.error('Erreur lors de la suppression');
+      setDeleteDialog({ open: false, id: null, label: null });
+    }
+  });
+
+  // Admin-only conti boucle deletion
+  const deleteBoucleMutation = useMutation({
+    mutationFn: async (id) => {
+      await ContiBoucle.delete(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['contiBoucles']);
+      toast.success('Boucle supprimée');
       setDeleteDialog({ open: false, id: null, label: null });
     },
     onError: (err) => {
@@ -136,12 +152,12 @@ export default function BoulderList() {
                       {boulder.ouvreur}
                     </p>
                     <div className="flex gap-2 mt-2">
-                      {boulder.match_autorise && (
+                      {!!boulder.match_autorise && (
                         <Badge variant="outline" className="text-xs">
                           Match OK
                         </Badge>
                       )}
-                      {boulder.pied_sur_main_autorise && (
+                      {!!boulder.pied_sur_main_autorise && (
                         <Badge variant="outline" className="text-xs">
                           Pied/Main OK
                         </Badge>
@@ -166,24 +182,13 @@ export default function BoulderList() {
                           variant="destructive" 
                           size="sm" 
                           aria-label={`Supprimer le bloc ${boulder.nom}`}
-                          onClick={() => setDeleteDialog({ open: true, id: boulder.id, label: boulder.nom })}
+                          onClick={() => setDeleteDialog({ open: true, id: boulder.id, label: boulder.nom, type: 'boulder' })}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       )}
                     </div>
-                    <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog(d => ({ ...d, open }))}>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Supprimer le bloc ?</AlertDialogTitle>
-                          <AlertDialogDescription>Voulez-vous vraiment supprimer "{deleteDialog.label}" ? Cette action est irréversible.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Annuler</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => deleteMutation.mutate(deleteDialog.id)} className="bg-red-600 hover:bg-red-700">Supprimer</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+
                   </div>
                 </div>
               </CardContent>
@@ -212,12 +217,12 @@ export default function BoulderList() {
                       {boucle.ouvreur}
                     </p>
                     <div className="flex gap-2 mt-2">
-                      {boucle.match_autorise && (
+                      {!!boucle.match_autorise && (
                         <Badge variant="outline" className="text-xs">
                           Match OK
                         </Badge>
                       )}
-                      {boucle.pied_sur_main_autorise && (
+                      {!!boucle.pied_sur_main_autorise && (
                         <Badge variant="outline" className="text-xs">
                           Pied/Main OK
                         </Badge>
@@ -228,20 +233,54 @@ export default function BoulderList() {
                     <Badge className="bg-yellow-100 text-yellow-800">
                       Boucle
                     </Badge>
-                    <Link 
-                      to={createPageUrl("ContiBoucleEdit") + `?id=${boucle.id}`}
-                      aria-label={`Modifier la boucle ${boucle.nom}`}
-                    >
-                      <Button variant="outline" size="sm" aria-label={`Modifier la boucle ${boucle.nom}`}>
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    </Link>
+                    <div className="flex gap-2">
+                      <Link 
+                        to={createPageUrl("ContiBoucleEdit") + `?id=${boucle.id}`}
+                        aria-label={`Modifier la boucle ${boucle.nom}`}
+                      >
+                        <Button variant="outline" size="sm" aria-label={`Modifier la boucle ${boucle.nom}`}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      </Link>
+                      {canDelete && (
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          aria-label={`Supprimer la boucle ${boucle.nom}`}
+                          onClick={() => setDeleteDialog({ open: true, id: boucle.id, label: boucle.nom, type: 'boucle' })}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
+
+        <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog(d => ({ ...d, open }))}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {deleteDialog.type === 'boucle' ? 'Supprimer la boucle ?' : 'Supprimer le bloc ?'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Voulez-vous vraiment supprimer "{deleteDialog.label}" ? Cette action est irréversible.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annuler</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => deleteDialog.type === 'boucle' ? deleteBoucleMutation.mutate(deleteDialog.id) : deleteMutation.mutate(deleteDialog.id)} 
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Supprimer
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

@@ -31,12 +31,13 @@ import {
 
 const niveaux = ["4a", "4b", "4c", "5a", "5b", "5c", "6a", "6a+", "6b", "6b+", "6c", "6c+", "7a", "7a+", "7b", "7b+", "7c", "7c+", "8a", "8a+", "8b", "8b+", "8c", "8c+", "9a", "9a+", "9b", "9b+", "9c"];
 
-/** Wizard to create a belle ouverture with photo upload/capture. */
-export default function BelleOuvertureCreate() {
+/** Wizard to edit a belle ouverture with photo upload/capture. */
+export default function BelleOuvertureEdit() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const urlParams = new URLSearchParams(window.location.search);
-  const sprayWallId = urlParams.get('spraywall');
+  const ouvertureId = urlParams.get('id');
+  const sprayWallFromQuery = urlParams.get('spraywall');
 
   const [user] = useState(() => {
     try {
@@ -52,12 +53,33 @@ export default function BelleOuvertureCreate() {
   const [niveau, setNiveau] = useState("6a");
   const [description, setDescription] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
+  const [sprayWallId, setSprayWallId] = useState(sprayWallFromQuery);
   const [uploading, setUploading] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showCameraDialog, setShowCameraDialog] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
   const videoRef = React.useRef(null);
   const canvasRef = React.useRef(null);
+  const photoUploadRef = React.useRef(null);
+
+  // Fetch existing ouverture data
+  const { data: ouverture, isLoading: loadingOuverture } = useQuery({
+    queryKey: ['belleOuverture', ouvertureId],
+    queryFn: () => BelleOuverture.get(ouvertureId),
+    enabled: !!ouvertureId,
+  });
+
+  // Set initial state from ouverture only once when loaded
+  React.useEffect(() => {
+    if (ouverture) {
+      setNom(ouverture.nom || "");
+      setOuvreur(ouverture.ouvreur || "");
+      setNiveau(ouverture.niveau || "6a");
+      setDescription(ouverture.description || "");
+      setPhotoUrl(ouverture.photo_url || "");
+      setSprayWallId(ouverture.spray_wall_id || sprayWallFromQuery);
+    }
+  }, [ouverture]);
 
   // Fetch spray wall context to display name and keep scope
   const { data: sprayWall } = useQuery({
@@ -147,43 +169,36 @@ export default function BelleOuvertureCreate() {
     setCapturedImage(null);
   };
 
-  // Persist the new ouverture and refresh catalog
-  const createMutation = useMutation({
+  // Update the ouverture and refresh view
+  const updateMutation = useMutation({
     mutationFn: async () => {
-      const payload = {
+      return await BelleOuverture.update(ouvertureId, {
         nom,
         ouvreur,
         niveau,
         description,
         photo_url: photoUrl,
         spray_wall_id: sprayWallId ? Number(sprayWallId) : null,
-        created_by: user?.email
-      };
-      console.log('Creating belle ouverture with:', payload);
-      return await BelleOuverture.create(payload);
+      });
     },
-    onSuccess: (data) => {
-      console.log('Belle ouverture created:', data);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bellesOuvertures'] });
-      toast.success("Belle ouverture créée avec succès");
-      navigate(createPageUrl("BelleOuvertureCatalog") + (sprayWallId ? `?spraywall=${sprayWallId}` : ''));
-    },
-    onError: (error) => {
-      console.error('Error creating belle ouverture:', error);
-      toast.error("Erreur lors de la création");
+      queryClient.invalidateQueries({ queryKey: ['belleOuverture', ouvertureId] });
+      toast.success("Belle ouverture modifiée avec succès");
+      navigate(createPageUrl("BelleOuvertureView") + `?id=${ouvertureId}` + (sprayWallId ? `&spraywall=${sprayWallId}` : ''));
     },
   });
 
   const handleSubmit = () => {
     if (!user?.email) {
-      toast.error("Connectez-vous pour créer une ouverture");
+      toast.error("Connectez-vous pour modifier une ouverture");
       return;
     }
     if (!nom || !ouvreur || !photoUrl) {
       toast.error("Veuillez remplir tous les champs obligatoires et ajouter une photo");
       return;
     }
-    createMutation.mutate();
+    updateMutation.mutate();
   };
 
   const handleCancel = () => {
@@ -191,10 +206,10 @@ export default function BelleOuvertureCreate() {
   };
 
   const confirmCancel = () => {
-    navigate(-1);
+    navigate(createPageUrl("BelleOuvertureCatalog") + (sprayWallId ? `?spraywall=${sprayWallId}` : ''));
   };
 
-  if (!sprayWall) {
+  if (loadingOuverture || !ouverture) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-pink-600" />
@@ -204,6 +219,14 @@ export default function BelleOuvertureCreate() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-pink-50 p-4">
+      <input
+        ref={photoUploadRef}
+        id="photo-upload"
+        type="file"
+        accept="image/*"
+        onChange={handleFileUpload}
+        className="hidden"
+      />
       <div className="max-w-4xl mx-auto pt-6 pb-20">
         <Button 
           variant="outline" 
@@ -215,9 +238,9 @@ export default function BelleOuvertureCreate() {
         </Button>
 
         <h1 className="text-3xl font-black text-slate-900 mb-2">
-          ➕ Créer une Belle Ouverture
+          ✏️ Modifier la Belle Ouverture
         </h1>
-        <p className="text-gray-600 mb-6">{sprayWall.nom}</p>
+        <p className="text-gray-600 mb-6">{sprayWall?.nom || 'Chargement...'}</p>
 
         <div className="space-y-6">
           <Card>
@@ -247,7 +270,7 @@ export default function BelleOuvertureCreate() {
                       variant="outline"
                       disabled={uploading}
                       className="flex-1"
-                      onClick={() => document.getElementById('photo-upload').click()}
+                      onClick={() => photoUploadRef.current && photoUploadRef.current.click()}
                     >
                       <Upload className="w-4 h-4 mr-2" />
                       Choisir une photo
@@ -261,13 +284,6 @@ export default function BelleOuvertureCreate() {
                     type="file"
                     accept="image/*"
                     capture="environment"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                  <input
-                    id="photo-upload"
-                    type="file"
-                    accept="image/*"
                     onChange={handleFileUpload}
                     className="hidden"
                   />
@@ -286,7 +302,7 @@ export default function BelleOuvertureCreate() {
                       variant="outline"
                       disabled={uploading}
                       className="flex-1"
-                      onClick={() => document.getElementById('photo-upload').click()}
+                      onClick={() => photoUploadRef.current && photoUploadRef.current.click()}
                     >
                       <Upload className="w-4 h-4 mr-2" />
                       Choisir une photo
@@ -348,11 +364,11 @@ export default function BelleOuvertureCreate() {
 
           <Button 
             onClick={handleSubmit}
-            disabled={createMutation.isLoading}
+            disabled={updateMutation.isLoading}
             className="w-full bg-pink-600 hover:bg-pink-700 h-14 text-lg"
           >
             <Save className="w-5 h-5 mr-2" />
-            {createMutation.isLoading ? "Création..." : "Créer la belle ouverture"}
+            {updateMutation.isLoading ? "Modification..." : "Enregistrer les modifications"}
           </Button>
         </div>
 
@@ -429,9 +445,9 @@ export default function BelleOuvertureCreate() {
         <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-slate-900">Abandonner la création ?</AlertDialogTitle>
+              <AlertDialogTitle className="text-slate-900">Abandonner les modifications ?</AlertDialogTitle>
               <AlertDialogDescription>
-                Êtes-vous sûr de vouloir abandonner la création de la belle ouverture ? Toutes les modifications seront perdues.
+                Êtes-vous sûr de vouloir abandonner les modifications ? Toutes les modifications seront perdues.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

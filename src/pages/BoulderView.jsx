@@ -3,7 +3,8 @@ import { Boulder, SprayWall, Hold } from "@/api/entities";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { ArrowLeft, Home, Edit, AlertTriangle, Dices, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Home, Edit, Trash2, AlertTriangle, Dices, ChevronLeft, ChevronRight, CircleCheckBig, CircleX } from "lucide-react";
+import LevelBadge from '../components/shared/LevelBadge';
 import { Button } from "@/components/ui/button";
 import BoulderPreview from '../components/spraywall/BoulderPreview';
 import {
@@ -14,6 +15,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 
 /** Show a boulder with hold visualization; supports random traversal navigation. */
@@ -23,6 +25,8 @@ export default function BoulderView() {
   const boulderId = urlParams.get('id');
   const fromRandom = urlParams.get('fromRandom') === 'true';
   const [showExhaustedDialog, setShowExhaustedDialog] = React.useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
   
   // Random mode state from sessionStorage to enable previous/next
   const history = fromRandom ? JSON.parse(sessionStorage.getItem('randomHistory') || '[]') : [];
@@ -129,10 +133,24 @@ export default function BoulderView() {
     }
   };
 
+  const deleteBoulder = async () => {
+    setIsDeleting(true);
+    await Boulder.delete(boulderId);
+    navigate(createPageUrl("BoulderCatalog") + `?spraywall=${sprayWall?.id || ''}`);
+  };
+
   if (!boulder) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-violet-600" />
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-xl w-full bg-white p-6 rounded-lg shadow">
+          <h2 className="text-xl font-bold mb-2">Bloc manquant</h2>
+          <p className="text-sm text-gray-700 mb-4">Ce bloc n'existe plus ou a été supprimé. Les blocs liés à ce bloc ne seront plus affichés correctement.</p>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => navigate(createPageUrl("BoulderCatalog"))}>
+              Retour au catalogue
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -278,6 +296,14 @@ export default function BoulderView() {
             <Edit className="w-4 h-4 mr-2" />
             Modifier
           </Button>
+          <Button
+            variant="destructive"
+            onClick={() => setShowDeleteDialog(true)}
+            className="flex-1 w-full bg-red-600 hover:bg-red-700 text-white"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Supprimer
+          </Button>
           {fromRandom && (
             <Button 
               variant="outline"
@@ -307,6 +333,28 @@ export default function BoulderView() {
               </AlertDialogAction>
               <AlertDialogAction onClick={() => handleExhaustedOption('dashboard')} className="w-full bg-violet-500 hover:bg-violet-600 !m-0">
                 Retour au Spray Wall Dashboard
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Supprimer ce bloc ?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Êtes-vous sûr de vouloir supprimer "{boulder.nom}" ?
+                Cette action est irréversible.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annuler</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={deleteBoulder}
+                disabled={isDeleting}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {isDeleting ? "Suppression..." : "Supprimer"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

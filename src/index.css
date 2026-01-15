@@ -322,6 +322,6 @@ button[class*="bg-red-"],
 }
 
 /* Force button text visibility on green gradient - outline buttons need dark text */
-.bg-gradient-to-br.from-slate-50.to-green-50 button:not(.fixed *):not([class*="z-40"] *):not([class*="bg-green"]):not([class*="bg-red"]) {
+.bg-gradient-to-br.from-slate-50.to-green-50 button:not(.fixed *):not([class*="z-40"] *):not([class*="bg-green"]):not([class*="bg-red"]):not([class*="bg-purple"]) {
   color: #0f172a !important;
 }

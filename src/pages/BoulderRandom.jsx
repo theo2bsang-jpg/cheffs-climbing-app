@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 const niveaux = ["4a", "4b", "4c", "5a", "5b", "5c", "6a", "6a+", "6b", "6b+", "6c", "6c+", "7a", "7a+", "7b", "7b+", "7c", "7c+", "8a", "8a+", "8b", "8b+", "8c", "8c+", "9a", "9a+", "9b", "9b+", "9c"];
@@ -25,6 +27,7 @@ export default function BoulderRandom() {
   const [niveauMin, setNiveauMin] = useState(urlNiveauMin || "6a");
   const [niveauMax, setNiveauMax] = useState(urlNiveauMax || "7a");
   const [selectedType, setSelectedType] = useState(urlType || "boulder");
+  const [noResultsInfo, setNoResultsInfo] = useState(null);
 
   // Scope to selected spray wall
   const { data: boulders = [] } = useQuery({
@@ -54,6 +57,7 @@ export default function BoulderRandom() {
     
     if (minIndex > maxIndex) {
       toast.error("Le niveau minimum doit être inférieur au maximum");
+      setNoResultsInfo(null);
       return;
     }
 
@@ -67,10 +71,27 @@ export default function BoulderRandom() {
       : filteredBoucles;
 
     if (allItems.length === 0) {
+      // Find available level range for selected type
+      const dataSource = selectedType === 'boulder' ? boulders : boucles;
+      const availableLevels = [...new Set(dataSource.map(item => item.niveau))].sort((a, b) => {
+        return niveaux.indexOf(a) - niveaux.indexOf(b);
+      });
+      
       const typeText = selectedType === 'boulder' ? 'bloc' : 'boucle';
-      toast.error(`Aucun ${typeText} trouvé dans cette plage de niveaux`);
+      const minLevel = availableLevels.length > 0 ? availableLevels[0] : 'N/A';
+      const maxLevel = availableLevels.length > 0 ? availableLevels[availableLevels.length - 1] : 'N/A';
+      
+      setNoResultsInfo({
+        type: typeText,
+        selectedMin: niveauMin,
+        selectedMax: niveauMax,
+        availableMin: minLevel,
+        availableMax: maxLevel
+      });
       return;
     }
+    
+    setNoResultsInfo(null);
 
     // Reset session storage for new random session
     sessionStorage.removeItem('randomHistory');
@@ -118,6 +139,18 @@ export default function BoulderRandom() {
             <CardTitle>Choisissez votre plage de niveaux</CardTitle>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
+            {noResultsInfo && (
+              <Alert className="border-amber-300 bg-amber-50 text-amber-900">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="ml-2">
+                  <p className="font-semibold">Aucun {noResultsInfo.type} trouvé</p>
+                  <p className="text-sm mt-1">
+                    Vous avez sélectionné {noResultsInfo.selectedMin} - {noResultsInfo.selectedMax}, mais les {noResultsInfo.type}s disponibles se situent entre <strong>{noResultsInfo.availableMin}</strong> et <strong>{noResultsInfo.availableMax}</strong>.
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <div>
               <Label>Type</Label>
               <Select value={selectedType} onValueChange={setSelectedType}>

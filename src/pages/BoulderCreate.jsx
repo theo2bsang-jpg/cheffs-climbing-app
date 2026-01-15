@@ -144,7 +144,7 @@ export default function BoulderCreate() {
         <Button 
           variant="outline" 
           onClick={handleCancel}
-          className="mb-4 bg-purple-900 text-white border-purple-700 hover:bg-purple-800"
+          className="mb-4 bg-purple-900 !text-white border-purple-700 hover:bg-purple-800"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Annuler

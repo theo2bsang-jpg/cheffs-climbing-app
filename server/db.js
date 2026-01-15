@@ -287,10 +287,14 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS contiBoucles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nom TEXT,
+    ouvreur TEXT,
     description TEXT,
     spray_wall_id TEXT,
     niveau_min TEXT,
     niveau_max TEXT,
+    match_autorise INTEGER DEFAULT 0,
+    pied_sur_main_autorise INTEGER DEFAULT 0,
+    prise_remplacee INTEGER DEFAULT 0,
     holds TEXT,
     created_by TEXT,
     created_at INTEGER,
@@ -477,7 +481,9 @@ export function deleteBoulder(id) {
  * @returns {object[]} Array of conti boucle rows.
  */
 export function listContiBoucles() {
-  return db.prepare('SELECT * FROM contiBoucles ORDER BY id').all();
+  const rows = db.prepare('SELECT * FROM contiBoucles ORDER BY id').all();
+  // Add virtual 'niveau' field and deserialize holds for frontend compatibility
+  return rows.map(row => ({ ...row, niveau: row.niveau_min, holds: parseJson(row.holds) }));
 }
 
 /**
@@ -487,10 +493,33 @@ export function listContiBoucles() {
  */
 export function createContiBoucle(data) {
   const now = Date.now();
-  const stmt = db.prepare(`INSERT INTO contiBoucles (nom, description, spray_wall_id, niveau_min, niveau_max, holds, created_by, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-  const info = stmt.run(data.nom || '', data.description || '', data.spray_wall_id || null, data.niveau_min || '', data.niveau_max || '', serialize(data.holds), data.created_by || null, now, now);
-  return db.prepare('SELECT * FROM contiBoucles WHERE id = ?').get(info.lastInsertRowid);
+  // Support both 'niveau' (single level) and 'niveau_min'/'niveau_max' (range)
+  const niveauMin = data.niveau_min || data.niveau || '';
+  const niveauMax = data.niveau_max || data.niveau || '';
+  const stmt = db.prepare(`INSERT INTO contiBoucles (nom, ouvreur, description, spray_wall_id, niveau_min, niveau_max, match_autorise, pied_sur_main_autorise, prise_remplacee, holds, created_by, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  const info = stmt.run(
+    data.nom || '',
+    data.ouvreur || '',
+    data.description || '',
+    data.spray_wall_id || null,
+    niveauMin,
+    niveauMax,
+    data.match_autorise ? 1 : 0,
+    data.pied_sur_main_autorise ? 1 : 0,
+    data.prise_remplacee ? 1 : 0,
+    serialize(data.holds),
+    data.created_by || null,
+    now,
+    now
+  );
+  const row = db.prepare('SELECT * FROM contiBoucles WHERE id = ?').get(info.lastInsertRowid);
+  // Add virtual 'niveau' field and deserialize holds for frontend compatibility
+  if (row) {
+    row.niveau = row.niveau_min;
+    row.holds = parseJson(row.holds);
+  }
+  return row;
 }
 
 /**
@@ -502,10 +531,42 @@ export function createContiBoucle(data) {
 export function updateContiBoucle(id, patch) {
   const existing = db.prepare('SELECT * FROM contiBoucles WHERE id = ?').get(id);
   if (!existing) return null;
-  const updated = { ...existing, ...patch, updated_at: Date.now() };
-  const stmt = db.prepare(`UPDATE contiBoucles SET nom = ?, description = ?, spray_wall_id = ?, niveau_min = ?, niveau_max = ?, holds = ?, created_by = ?, updated_at = ? WHERE id = ?`);
-  stmt.run(updated.nom, updated.description, updated.spray_wall_id, updated.niveau_min, updated.niveau_max, serialize(updated.holds), updated.created_by, updated.updated_at, id);
-  return db.prepare('SELECT * FROM contiBoucles WHERE id = ?').get(id);
+  // Support both 'niveau' and 'niveau_min'/'niveau_max'
+  const niveauMin = patch.niveau_min || patch.niveau || existing.niveau_min;
+  const niveauMax = patch.niveau_max || patch.niveau || existing.niveau_max;
+  const updated = {
+    ...existing,
+    ...patch,
+    niveau_min: niveauMin,
+    niveau_max: niveauMax,
+    match_autorise: patch.match_autorise !== undefined ? (patch.match_autorise ? 1 : 0) : existing.match_autorise,
+    pied_sur_main_autorise: patch.pied_sur_main_autorise !== undefined ? (patch.pied_sur_main_autorise ? 1 : 0) : existing.pied_sur_main_autorise,
+    prise_remplacee: patch.prise_remplacee !== undefined ? (patch.prise_remplacee ? 1 : 0) : existing.prise_remplacee,
+    updated_at: Date.now()
+  };
+  const stmt = db.prepare(`UPDATE contiBoucles SET nom = ?, ouvreur = ?, description = ?, spray_wall_id = ?, niveau_min = ?, niveau_max = ?, match_autorise = ?, pied_sur_main_autorise = ?, prise_remplacee = ?, holds = ?, created_by = ?, updated_at = ? WHERE id = ?`);
+  stmt.run(
+    updated.nom,
+    updated.ouvreur,
+    updated.description,
+    updated.spray_wall_id,
+    updated.niveau_min,
+    updated.niveau_max,
+    updated.match_autorise,
+    updated.pied_sur_main_autorise,
+    updated.prise_remplacee,
+    serialize(updated.holds),
+    updated.created_by,
+    updated.updated_at,
+    id
+  );
+  const row = db.prepare('SELECT * FROM contiBoucles WHERE id = ?').get(id);
+  // Add virtual 'niveau' field and deserialize holds for frontend compatibility
+  if (row) {
+    row.niveau = row.niveau_min;
+    row.holds = parseJson(row.holds);
+  }
+  return row;
 }
 
 /**

@@ -33,6 +33,60 @@ export default function SprayWallEdit() {
   const [holds, setHolds] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [editingHolds, setEditingHolds] = useState(false);
+  const fileInputRef = React.useRef();
+
+  // Export spray wall and holds as JSON
+  const handleExport = () => {
+    if (!sprayWall) return;
+    const exportData = {
+      sprayWall: {
+        id: sprayWall.id,
+        nom: sprayWall.nom,
+        lieu: sprayWall.lieu,
+        photo_url: sprayWall.photo_url,
+      },
+      holds: holds,
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `spraywall-${sprayWall.id}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Import spray wall and holds from JSON
+  const handleImport = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (data.sprayWall) {
+        setNom(data.sprayWall.nom || "");
+        setLieu(data.sprayWall.lieu || "");
+        setPhotoUrl(data.sprayWall.photo_url || "");
+      }
+      if (Array.isArray(data.holds)) {
+        // Remove id from imported holds so they are created
+        const holdsToImport = data.holds.map(h => {
+          const { id, ...rest } = h;
+          return rest;
+        });
+        setHolds(holdsToImport);
+      }
+      toast.success("Import JSON réussi, sauvegarde en cours...");
+      // Close editing holds if open to prevent override
+      setEditingHolds(false);
+      // Wait for state to update, then persist
+      setTimeout(() => {
+        updateMutation.mutate({ redirect: false });
+      }, 100);
+    } catch (err) {
+      toast.error("Erreur import JSON");
+    }
+  };
 
   useEffect(() => {
     const loadUser = async () => {
@@ -107,86 +161,59 @@ export default function SprayWallEdit() {
 
   // Save wall + holds; mark dependent routes when holds removed
   const updateMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({ redirect } = {}) => {
       await SprayWall.update(sprayWallId, {
         nom,
         lieu,
         photo_url: photoUrl
       });
 
-      // Separate holds into existing, new, and deleted
-      const existingHoldIds = existingHolds.map(h => h.id);
-      const currentHoldIds = holds.filter(h => h.id).map(h => h.id);
-      
-      const holdsToUpdate = holds.filter(h => h.id && existingHoldIds.includes(h.id));
-      const holdsToCreate = holds.filter(h => !h.id);
-      const holdsToDelete = existingHolds.filter(h => !currentHoldIds.includes(h.id));
-      
-      // Delete removed holds and mark affected boulders/boucles
-      if (holdsToDelete.length > 0) {
-        const deletedHoldIds = holdsToDelete.map(h => h.id);
-        
-        // Mark affected boulders and boucles
-        const [allBoulders, allBoucles] = await Promise.all([
-          Boulder.filter({ spray_wall_id: sprayWallId }),
-          ContiBoucle.filter({ spray_wall_id: sprayWallId })
-        ]);
 
-        const affectedBoulders = allBoulders.filter(boulder => 
-          boulder.holds.some(h => deletedHoldIds.includes(h.hold_id))
-        );
-
-        const affectedBoucles = allBoucles.filter(boucle => 
-          boucle.holds.some(h => deletedHoldIds.includes(h.hold_id))
-        );
-
-        await Promise.all([
-          ...affectedBoulders.map(boulder => 
-            Boulder.update(boulder.id, { prise_remplacee: true })
-          ),
-          ...affectedBoucles.map(boucle => 
-            ContiBoucle.update(boucle.id, { prise_remplacee: true })
-          )
-        ]);
-        
-        // Delete the holds
-        await Promise.all(
-          holdsToDelete.map(hold => 
-            Hold.delete(hold.id)
-          )
-        );
-      }
-
-      // Update existing holds
+      // Overwrite or create all imported holds
+      const importedIds = holds.map(h => h.id).filter(Boolean);
+      // Delete holds not present in import
+      const holdsToDelete = existingHolds.filter(h => !importedIds.includes(h.id));
       await Promise.all(
-        holdsToUpdate.map(hold =>
-          Hold.update(hold.id, {
-            nom: hold.nom,
-            x: hold.x,
-            y: hold.y
-          })
-        )
+        holdsToDelete.map(hold => Hold.delete(hold.id))
       );
-
-      // Create new holds
-      await Promise.all(
-        holdsToCreate.map(hold =>
-          Hold.create({
+      for (const hold of holds) {
+        if (hold.id) {
+          // Try to update, if fails, create
+          try {
+            await Hold.update(hold.id, {
+              nom: hold.nom,
+              spray_wall_id: sprayWallId,
+              x: hold.x,
+              y: hold.y
+            });
+          } catch (e) {
+            await Hold.create({
+              id: hold.id,
+              nom: hold.nom,
+              spray_wall_id: sprayWallId,
+              x: hold.x,
+              y: hold.y
+            });
+          }
+        } else {
+          await Hold.create({
             nom: hold.nom,
             spray_wall_id: sprayWallId,
             x: hold.x,
             y: hold.y
-          })
-        )
-      );
+          });
+        }
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries(sprayWallQueryKey);
       queryClient.invalidateQueries(holdsQueryKey);
-      queryClient.invalidateQueries(['boulders']);
-      queryClient.invalidateQueries(['contiBoucles']);
+      queryClient.invalidateQueries({ queryKey: ['boulders', sprayWallId] });
+      queryClient.invalidateQueries({ queryKey: ['contiBoucles', sprayWallId] });
       toast.success("Spray wall mis à jour");
-      navigate(dashboardUrl);
+      if (variables?.redirect) {
+        navigate(dashboardUrl);
+      }
     },
   });
 
@@ -213,6 +240,22 @@ export default function SprayWallEdit() {
         <h1 className="text-3xl font-black text-slate-900 mb-6">
           ✏️ Modifier le Spray Wall
         </h1>
+
+        <div className="flex gap-3 mb-6">
+          <Button variant="secondary" onClick={handleExport}>
+            Exporter en JSON
+          </Button>
+          <input
+            type="file"
+            accept="application/json"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            onChange={handleImport}
+          />
+          <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+            Importer depuis JSON
+          </Button>
+        </div>
 
         <div className="space-y-6">
           <Card>
@@ -300,7 +343,7 @@ export default function SprayWallEdit() {
 
           {!editingHolds && (
             <Button
-              onClick={() => updateMutation.mutate()}
+              onClick={() => updateMutation.mutate({ redirect: true })}
               disabled={updateMutation.isLoading}
               className="w-full bg-orange-600 hover:bg-orange-700 h-14 text-lg"
             >

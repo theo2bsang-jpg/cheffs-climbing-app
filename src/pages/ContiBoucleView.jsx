@@ -1,9 +1,10 @@
-import React from 'react';
+﻿import React from 'react';
 import { ContiBoucle, SprayWall, Hold } from "@/api/entities";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { ArrowLeft, Home, Edit, AlertTriangle, Dices, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Home, Edit, Trash2, AlertTriangle, Dices, ChevronLeft, ChevronRight, CircleCheckBig, CircleX } from "lucide-react";
+import LevelBadge from '../components/shared/LevelBadge';
 import { Button } from "@/components/ui/button";
 import BoulderPreview from '../components/spraywall/BoulderPreview';
 import {
@@ -14,6 +15,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 
 /** Play a conti loop with random traversal support and holds preview. */
@@ -23,13 +25,40 @@ export default function ContiBoucleView() {
   const boucleId = urlParams.get('id');
   const fromRandom = urlParams.get('fromRandom') === 'true';
   const [showExhaustedDialog, setShowExhaustedDialog] = React.useState(false);
-  
+  const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
+  // Random mode state stored in sessionStorage
   const history = fromRandom ? JSON.parse(sessionStorage.getItem('randomHistory') || '[]') : [];
   const currentIndex = fromRandom ? parseInt(sessionStorage.getItem('randomCurrentIndex') || '0') : 0;
   const allIds = fromRandom ? JSON.parse(sessionStorage.getItem('randomAllIds') || '[]') : [];
-  
+
   const canGoPrevious = fromRandom && currentIndex > 0;
   const canGoNext = fromRandom && currentIndex < history.length - 1;
+
+  // Fetch current conti boucle
+  const { data: boucle } = useQuery({
+    queryKey: ['contiBoucle', boucleId],
+    queryFn: () => ContiBoucle.get(boucleId),
+    enabled: !!boucleId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Fetch spray wall for context and photo
+  const { data: sprayWall } = useQuery({
+    queryKey: ['sprayWall', boucle?.spray_wall_id],
+    queryFn: () => SprayWall.get(boucle.spray_wall_id),
+    enabled: !!boucle?.spray_wall_id,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Fetch holds to render annotated preview
+  const { data: holds = [] } = useQuery({
+    queryKey: ['holds', boucle?.spray_wall_id],
+    queryFn: () => Hold.filter({ spray_wall_id: boucle.spray_wall_id }),
+    enabled: !!boucle?.spray_wall_id,
+    staleTime: 5 * 60 * 1000,
+  });
 
   /** When in random mode with cached history, stay aligned to stored index. */
   React.useEffect(() => {
@@ -42,36 +71,9 @@ export default function ContiBoucleView() {
         window.location.reload();
       }
     }
-  }, []);
+  }, [fromRandom, history, currentIndex, boucleId, navigate]);
 
-  const { data: boucle } = useQuery({
-    queryKey: ['contiBoucle', boucleId],
-    queryFn: () => ContiBoucle.get(boucleId),
-    enabled: !!boucleId,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const { data: sprayWall } = useQuery({
-    queryKey: ['sprayWall', boucle?.spray_wall_id],
-    queryFn: () => SprayWall.get(boucle.spray_wall_id),
-    enabled: !!boucle?.spray_wall_id,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const { data: holds = [] } = useQuery({
-    queryKey: ['holds', boucle?.spray_wall_id],
-    queryFn: () => Hold.filter({ spray_wall_id: boucle.spray_wall_id }),
-    enabled: !!boucle?.spray_wall_id,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  // Needed only when coming from random flow to pick a new candidate
-  const { data: allBoucles = [] } = useQuery({
-    queryKey: ['contiBoucles', boucle?.spray_wall_id],
-    queryFn: () => ContiBoucle.filter({ spray_wall_id: boucle.spray_wall_id }),
-    enabled: fromRandom && !!boucle?.spray_wall_id,
-  });
-
+  /** Go to previous random selection in history. */
   const handlePrevious = () => {
     if (canGoPrevious) {
       const newIndex = currentIndex - 1;
@@ -84,6 +86,7 @@ export default function ContiBoucleView() {
     }
   };
 
+  /** Advance to next random selection in history. */
   const handleNext = () => {
     if (canGoNext) {
       const newIndex = currentIndex + 1;
@@ -96,10 +99,10 @@ export default function ContiBoucleView() {
     }
   };
 
-  // Pick a new unseen boucle when traversing randomly
+  /** Pick a new unseen boucle from cached ids. */
   const handleRelaunch = () => {
     const unseenIds = allIds.filter(id => !history.includes(id));
-    
+
     if (unseenIds.length === 0) {
       setShowExhaustedDialog(true);
       return;
@@ -108,16 +111,17 @@ export default function ContiBoucleView() {
     const randomId = unseenIds[Math.floor(Math.random() * unseenIds.length)];
     const newHistory = [...history.slice(0, currentIndex + 1), randomId];
     const newIndex = currentIndex + 1;
-    
+
     sessionStorage.setItem('randomHistory', JSON.stringify(newHistory));
     sessionStorage.setItem('randomCurrentIndex', newIndex.toString());
-    
+
     const params = new URLSearchParams(window.location.search);
     params.set('id', randomId);
     navigate(`${createPageUrl("ContiBoucleView")}?${params.toString()}`, { replace: true });
     window.location.reload();
   };
 
+  /** Handle user choice after exhausting random pool. */
   const handleExhaustedOption = (option) => {
     const sprayWallIdFromUrl = urlParams.get('sprayWallId');
     if (option === 'selection') {
@@ -135,7 +139,13 @@ export default function ContiBoucleView() {
     }
   };
 
-  if (!boucle || !sprayWall) {
+  const deleteBoucle = async () => {
+    setIsDeleting(true);
+    await ContiBoucle.delete(boucleId);
+    navigate(createPageUrl("SprayWallDashboard") + `?id=${sprayWall?.id || ''}`);
+  };
+
+  if (!boucle) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-violet-600" />
@@ -143,13 +153,32 @@ export default function ContiBoucleView() {
     );
   }
 
+  if (boucle && !sprayWall) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-xl w-full bg-white p-6 rounded-lg shadow">
+          <h2 className="text-xl font-bold mb-2">Lieu manquant</h2>
+          <p className="text-sm text-gray-700 mb-4">Cette boucle n'est associée à aucun lieu (spray wall). Assignez un lieu pour voir la vue complète et créer des boucles associées.</p>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => navigate(createPageUrl("ContiBoucleEdit") + `?id=${boucleId}`)}>
+              Modifier la boucle
+            </Button>
+            <Button onClick={() => navigate(createPageUrl("SprayWallSelect"))}>
+              Sélectionner un lieu
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-yellow-50 p-4">
       <div className="max-w-4xl mx-auto pt-6 pb-20">
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           onClick={() => {
-            const catalogUrl = fromRandom 
+            const catalogUrl = fromRandom
               ? createPageUrl("BoulderRandom") + `?spraywall=${sprayWall.id}`
               : createPageUrl("BoulderCatalog") + `?spraywall=${sprayWall.id}`;
             navigate(catalogUrl);
@@ -170,7 +199,7 @@ export default function ContiBoucleView() {
             <AlertTriangle className="w-6 h-6 text-yellow-600 mt-0.5" />
             <div>
               <p className="font-semibold text-yellow-900">
-                ⚠️ Une ou plusieurs prises ont été remplacées
+                 Une ou plusieurs prises ont été remplacées
               </p>
               <p className="text-sm text-yellow-800 mt-1">
                 Cette boucle nécessite une mise à jour
@@ -201,13 +230,12 @@ export default function ContiBoucleView() {
 
               if (!holdData) {
                 return (
-                  <div key={idx} className="flex items-center gap-3 p-2 bg-red-50 rounded border-2 border-red-300">
-                    <span className="text-sm font-bold text-slate-600 min-w-[24px]">{hold.ordre}</span>
+                  <div key={idx} className="flex items-center gap-3 p-2 bg-red-100 rounded border-2 border-red-300">
+                    <span className="text-sm font-bold text-slate-700 min-w-[24px]">{hold.ordre}</span>
                     <div className="w-6 h-6 rounded-full bg-red-600 border-2 border-white shadow-md flex items-center justify-center text-white text-xs font-bold">
                       ❌
                     </div>
-                    <span className="font-semibold text-slate-900 line-through">[SUPPR] {hold.hold_nom || 'Prise inconnue'}</span>
-                    <span className="text-red-600 text-sm font-bold">❌ Supprimée</span>
+                    <span className="font-semibold text-red-900 line-through">[SUPPR] {hold.nom || hold.hold_nom || 'Prise inconnue'}</span>
                   </div>
                 );
               }
@@ -225,7 +253,7 @@ export default function ContiBoucleView() {
 
         {fromRandom && (
           <div className="flex gap-2 mb-4">
-            <Button 
+            <Button
               variant="outline"
               onClick={handlePrevious}
               disabled={!canGoPrevious}
@@ -234,7 +262,7 @@ export default function ContiBoucleView() {
               <ChevronLeft className="w-4 h-4 mr-2" />
               Précédent
             </Button>
-            <Button 
+            <Button
               variant="outline"
               onClick={handleNext}
               disabled={!canGoNext}
@@ -247,7 +275,7 @@ export default function ContiBoucleView() {
         )}
 
         <div className="flex gap-3">
-          <Button 
+          <Button
             variant="outline"
             onClick={() => {
               sessionStorage.removeItem('randomHistory');
@@ -255,24 +283,32 @@ export default function ContiBoucleView() {
               sessionStorage.removeItem('randomAllIds');
               navigate(createPageUrl("SprayWallDashboard") + `?id=${sprayWall.id}`);
             }}
-            className="flex-1"
+            className="flex-1 border-slate-800 text-slate-900 bg-white hover:bg-slate-100"
           >
             <Home className="w-4 h-4 mr-2" />
             Accueil
           </Button>
-          <Button 
+          <Button
             variant="outline"
             onClick={() => navigate(createPageUrl("ContiBoucleEdit") + `?id=${boucleId}`)}
-            className="flex-1"
+            className="flex-1 border-slate-800 text-slate-900 bg-white hover:bg-slate-100"
           >
             <Edit className="w-4 h-4 mr-2" />
             Modifier
           </Button>
+          <Button
+            variant="destructive"
+            onClick={() => setShowDeleteDialog(true)}
+            className="flex-1 w-full bg-red-600 hover:bg-red-700 text-white"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Supprimer
+          </Button>
           {fromRandom && (
-            <Button 
+            <Button
               variant="outline"
               onClick={handleRelaunch}
-              className="flex-1"
+              className="flex-1 border-slate-800 text-slate-900 bg-white hover:bg-slate-100"
             >
               <Dices className="w-4 h-4 mr-2" />
               Relancer
@@ -283,20 +319,42 @@ export default function ContiBoucleView() {
         <AlertDialog open={showExhaustedDialog} onOpenChange={setShowExhaustedDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Toutes les boucles ont été vues ! 🎉</AlertDialogTitle>
+              <AlertDialogTitle>Toutes les boucles ont été vues ! </AlertDialogTitle>
               <AlertDialogDescription>
                 Vous avez parcouru toutes les boucles de cette plage de niveaux. Que voulez-vous faire ?
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
-              <AlertDialogAction onClick={() => handleExhaustedOption('selection')} className="w-full">
+            <AlertDialogFooter className="!flex !flex-col gap-2 !items-stretch !space-x-0">
+              <AlertDialogAction onClick={() => handleExhaustedOption('selection')} className="w-full !m-0">
                 Retour à la sélection des niveaux
               </AlertDialogAction>
-              <AlertDialogAction onClick={() => handleExhaustedOption('stay')} className="w-full bg-gray-500 hover:bg-gray-600">
+              <AlertDialogAction onClick={() => handleExhaustedOption('stay')} className="w-full bg-gray-500 hover:bg-gray-600 !m-0">
                 Rester sur cette boucle
               </AlertDialogAction>
-              <AlertDialogAction onClick={() => handleExhaustedOption('dashboard')} className="w-full bg-violet-500 hover:bg-violet-600">
+              <AlertDialogAction onClick={() => handleExhaustedOption('dashboard')} className="w-full bg-violet-500 hover:bg-violet-600 !m-0">
                 Retour au Spray Wall Dashboard
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Supprimer cette boucle ?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Êtes-vous sûr de vouloir supprimer "{boucle.nom}" ?
+                Cette action est irréversible.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annuler</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={deleteBoucle}
+                disabled={isDeleting}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {isDeleting ? "Suppression..." : "Supprimer"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

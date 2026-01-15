@@ -105,7 +105,7 @@ export default function ContiBoucleEdit() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['contiBoucle']);
-      queryClient.invalidateQueries(['contiBoucles']);
+      queryClient.invalidateQueries({ queryKey: ['contiBoucles', boucle?.spray_wall_id] });
       toast.success("Boucle modifiée avec succès");
       navigate(createPageUrl("ContiBoucleView") + `?id=${boucleId}`);
     },
@@ -141,7 +141,7 @@ export default function ContiBoucleEdit() {
       await ContiBoucle.delete(boucleId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['contiBoucles']);
+      queryClient.invalidateQueries({ queryKey: ['contiBoucles', boucle?.spray_wall_id] });
       toast.success("Boucle supprimée avec succès");
       navigate(createPageUrl("BoulderCatalog") + `?spraywall=${boucle.spray_wall_id}`);
     },

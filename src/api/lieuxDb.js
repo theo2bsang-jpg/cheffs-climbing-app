@@ -171,7 +171,7 @@ export async function createHold(data) {
   const db = readDb() ?? { version: 1, sprayWalls: [], holds: [] };
   const now = Date.now();
   const newItem = {
-    id: nextId(db.holds),
+    id: data?.id ?? nextId(db.holds),
     spray_wall_id: data?.spray_wall_id ?? null,
     nom: data?.nom ?? "",
     x: data?.x ?? 0,

@@ -25,7 +25,7 @@ export default function BoulderPreview({
 
   return (
     <div className="space-y-4">
-      <Card className="p-4 bg-gradient-to-r from-violet-50 to-pink-50 border-violet-200">
+      <div className="rounded-xl border text-card-foreground shadow p-4 bg-gradient-to-r from-violet-50 to-pink-50 border-violet-200">
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div>
             <span className="text-gray-600">Nom :</span>
@@ -46,20 +46,19 @@ export default function BoulderPreview({
           </div>
           <div>
             <span className="text-gray-600">Règles :</span>
-            <div className="flex gap-1 mt-1">
-              {boulderData.match_autorise ? (
-                <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded flex items-center gap-1">
-                  <CheckCircle className="w-3 h-3" /> Match OK
-                </span>
-              ) : (
-                <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded flex items-center gap-1">
-                  <XCircle className="w-3 h-3" /> Match non
-                </span>
-              )}
+            <div className="flex gap-1 mt-1 flex-wrap">
+              <span className={`text-xs px-2 py-0.5 rounded flex items-center gap-1 ${boulderData.match_autorise ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                {boulderData.match_autorise ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                {boulderData.match_autorise ? 'Match OK' : 'Match non'}
+              </span>
+              <span className={`text-xs px-2 py-0.5 rounded flex items-center gap-1 ${boulderData.pied_sur_main_autorise ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                {boulderData.pied_sur_main_autorise ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                {boulderData.pied_sur_main_autorise ? 'Pied/Main OK' : 'Pied/Main non'}
+              </span>
             </div>
           </div>
         </div>
-      </Card>
+      </div>
 
       <div className="relative border-4 border-violet-600 rounded-lg overflow-visible bg-slate-900 shadow-2xl">
         <img 
@@ -123,8 +122,6 @@ export default function BoulderPreview({
           );
         })}
       </div>
-
-
     </div>
   );
 }

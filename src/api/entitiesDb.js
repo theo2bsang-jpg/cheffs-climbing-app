@@ -31,6 +31,10 @@ function matchesQuery(item, query) {
   return Object.entries(query).every(([key, value]) => {
     const itemValue = item?.[key];
     if (itemValue == null && value == null) return true;
+    // Special case for id: match string/number
+    if (key === 'id') {
+      return String(itemValue) === String(value);
+    }
     return String(itemValue) === String(value);
   });
 }
@@ -155,7 +159,9 @@ export async function listContiBoucles() {
 export async function filterContiBoucles(query) {
   ensureEntitiesDbSeeded();
   const db = readDb();
-  return (db?.contiBoucles ?? []).filter((item) => matchesQuery(item, query ?? {}));
+  const results = (db?.contiBoucles ?? []).filter((item) => matchesQuery(item, query ?? {}));
+  // Add virtual 'niveau' field for frontend compatibility
+  return results.map(item => ({ ...item, niveau: item.niveau_min }));
 }
 
 /** Create a conti boucle entry offline. */
@@ -164,13 +170,21 @@ export async function createContiBoucle(data) {
   ensureEntitiesDbSeeded();
   const db = readDb() ?? { version: 1, boulders: [], contiBoucles: [], ascensions: [], tests: [], blocMax: [], voieMax: [], belleOuvertures: [] };
   const now = Date.now();
+  // Support both 'niveau' and 'niveau_min'/'niveau_max'
+  const niveauMin = data?.niveau_min ?? data?.niveau ?? "";
+  const niveauMax = data?.niveau_max ?? data?.niveau ?? "";
   const newItem = {
     id: nextId(db.contiBoucles),
     nom: data?.nom ?? "",
+    ouvreur: data?.ouvreur ?? "",
     description: data?.description ?? "",
     spray_wall_id: data?.spray_wall_id ?? null,
-    niveau_min: data?.niveau_min ?? "",
-    niveau_max: data?.niveau_max ?? "",
+    niveau_min: niveauMin,
+    niveau_max: niveauMax,
+    niveau: niveauMin, // Add virtual field
+    match_autorise: data?.match_autorise ?? false,
+    pied_sur_main_autorise: data?.pied_sur_main_autorise ?? false,
+    prise_remplacee: data?.prise_remplacee ?? false,
     holds: data?.holds ?? [],
     created_by: data?.created_by ?? null,
     created_at: now,
@@ -191,9 +205,16 @@ export async function updateContiBoucle(id, patch) {
   const index = db.contiBoucles.findIndex((c) => String(c.id) === String(id));
   if (index === -1) throw new Error("Not found");
 
+  // Support both 'niveau' and 'niveau_min'/'niveau_max'
+  const niveauMin = patch.niveau_min ?? patch.niveau ?? db.contiBoucles[index].niveau_min;
+  const niveauMax = patch.niveau_max ?? patch.niveau ?? db.contiBoucles[index].niveau_max;
+
   const updated = {
     ...db.contiBoucles[index],
     ...patch,
+    niveau_min: niveauMin,
+    niveau_max: niveauMax,
+    niveau: niveauMin, // Add virtual field
     id: db.contiBoucles[index].id,
     updated_at: Date.now(),
   };
@@ -551,6 +572,9 @@ export async function createBelleOuverture(data) {
     description: data?.description ?? "",
     photo_url: data?.photo_url ?? "",
     created_by: data?.created_by ?? null,
+    niveau: data?.niveau ?? "",
+    ouvreur: data?.ouvreur ?? "",
+    spray_wall_id: data?.spray_wall_id ?? null,
     created_at: now,
     updated_at: now,
   };

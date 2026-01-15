@@ -405,8 +405,10 @@ app.patch('/api/contiBoucles/:id', authMiddleware, (req, res) => {
 });
 app.delete('/api/contiBoucles/:id', authMiddleware, (req, res) => {
   const id = Number(req.params.id);
+  const existing = listContiBoucles().find(b => b.id === id);
   const removed = deleteContiBoucle(id);
   if (!removed) return res.status(404).json({ error: 'Not found' });
+  if (existing) console.log(`[DELETE] Conti boucle deleted: ID ${id}, "${existing.nom}" by ${req.user.email}`);
   res.json(removed);
 });
 

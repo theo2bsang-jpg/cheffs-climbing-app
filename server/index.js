@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+console.log('ALLOWED_ORIGINS:', process.env.ALLOWED_ORIGINS);
 /** Express API for auth plus climbing entities with CSRF and rate limits. */
 import express from 'express';
 import cors from 'cors';

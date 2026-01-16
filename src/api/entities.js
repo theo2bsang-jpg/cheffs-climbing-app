@@ -653,7 +653,29 @@ export const User = {
   },
   /** Create user (admin). */
   create: async (data) => {
-    try { const res = await callServer('/api/users', { method: 'POST', body: JSON.stringify(data) }); return res.user; } catch { return createUser(data); }
+    try {
+      const res = await callServer('/api/users', { method: 'POST', body: JSON.stringify(data) });
+      return res.user;
+    } catch (err) {
+      // Only fallback to local if it's a network error (no response)
+      if (err && err.message && (
+        err.message === 'Failed to fetch' ||
+        err.message === 'NetworkError when attempting to fetch resource.'
+      )) {
+        return createUser(data);
+      }
+      // If the error is a Response object (e.g., fetch throws a Response), try to extract the error message
+      if (err instanceof Response) {
+        try {
+          const body = await err.json();
+          throw new Error(body.error || err.statusText || 'Server error');
+        } catch (e) {
+          throw new Error(err.statusText || 'Server error');
+        }
+      }
+      // Otherwise, propagate the error (e.g., duplicate username)
+      throw err;
+    }
   },
   /** Update user by email (admin). */
   updateByUsername: async (username, patch) => {

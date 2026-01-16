@@ -338,9 +338,21 @@ app.post('/api/users', authMiddleware, requireAdmin, (req, res) => {
   // createUser expects password_hash; hash it here
   const salt = bcrypt.genSaltSync(10);
   const hash = bcrypt.hashSync(password, salt);
-  const user = createUser({ username: String(username).trim().toLowerCase(), full_name: full_name || username, password_hash: hash, is_global_admin: is_global_admin ? 1 : 0 });
-  console.log(`[CREATE] User created: ${user.username} (admin: ${user.is_global_admin}) by ${req.user.username}`);
-  res.json({ user: sanitizeUser(user) });
+  try {
+    const user = createUser({ username: String(username).trim().toLowerCase(), full_name: full_name || username, password_hash: hash, is_global_admin: is_global_admin ? 1 : 0 });
+    console.log(`[CREATE] User created: ${user.username} (admin: ${user.is_global_admin}) by ${req.user.username}`);
+    res.json({ user: sanitizeUser(user) });
+  } catch (e) {
+    // Handle both SQLITE_CONSTRAINT and SQLITE_CONSTRAINT_UNIQUE for duplicate usernames
+    if (
+      (e && (e.code === 'SQLITE_CONSTRAINT' || e.code === 'SQLITE_CONSTRAINT_UNIQUE')) &&
+      String(e.message).toLowerCase().includes('unique constraint failed: users.username')
+    ) {
+      return res.status(409).json({ error: 'Username already exists' });
+    }
+    console.error('Failed to create user:', e);
+    res.status(500).json({ error: 'Failed to create user' });
+  }
 });
 
 app.patch('/api/users/:username', authMiddleware, (req, res) => {

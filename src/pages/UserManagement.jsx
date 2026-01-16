@@ -18,7 +18,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { toast } from 'sonner';
 
 /** Admin-only user CRUD: create, promote, set password, delete, paginate. */
 export default function UserManagement() {
@@ -61,32 +60,40 @@ export default function UserManagement() {
   const [userPage, setUserPage] = useState(0);
   const USERS_PAGE_SIZE = 8;
 
+  const [createError, setCreateError] = useState("");
   const createUserMutation = useMutation({
     mutationFn: async (data) => {
       return User.create(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast.success('Utilisateur créé');
+      setCreateError("");
       setNewUsername(''); setNewFullName(''); setNewPassword(''); setNewIsAdmin(false);
     },
-    onError: (err) => toast.error(err?.message || 'Erreur création utilisateur'),
+    onError: (err) => {
+      if (err?.message === 'Username already exists') {
+        setCreateError("Ce nom d'utilisateur existe déjà");
+      } else {
+        setCreateError(err?.message || 'Erreur création utilisateur');
+      }
+    },
   });
+
 
   const updateUserMutation = useMutation({
     mutationFn: async ({ username, patch }) => {
       return User.updateByUsername(username, patch);
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['users'] }); toast.success('Utilisateur mis à jour'); },
-    onError: () => toast.error('Erreur lors de la mise à jour'),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['users'] }); setCreateError('Utilisateur mis à jour'); },
+    onError: () => setCreateError('Erreur lors de la mise à jour'),
   });
 
   const deleteUserMutation = useMutation({
     mutationFn: async (username) => {
       return User.deleteByUsername(username);
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['users'] }); toast.success('Utilisateur supprimé'); },
-    onError: () => toast.error('Erreur lors de la suppression'),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['users'] }); setCreateError('Utilisateur supprimé'); },
+    onError: () => setCreateError('Erreur lors de la suppression'),
   });
 
   const setPasswordMutation = useMutation({
@@ -95,16 +102,16 @@ export default function UserManagement() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast.success('Mot de passe défini');
+      setCreateError('Mot de passe défini');
       const targetUsername = variables?.username || passwordDialog.user?.username || 'utilisateur';
       setPasswordDialog({ open: false, user: null, newPassword: '', confirm: '' });
       setPasswordSuccessDialog({ open: true, username: targetUsername });
     },
-    onError: (err) => toast.error(err?.message || 'Erreur lors du changement de mot de passe'),
+    onError: (err) => setCreateError(err?.message || 'Erreur lors du changement de mot de passe'),
   });
 
   const handleCreate = () => {
-    if (!newUsername || !newPassword) return toast.error('Nom d\'utilisateur et mot de passe requis');
+    if (!newUsername || !newPassword) { setCreateError("Nom d'utilisateur et mot de passe requis"); return; }
     createUserMutation.mutate({ username: newUsername, password: newPassword, full_name: newFullName, is_global_admin: newIsAdmin });
   };
 
@@ -156,6 +163,9 @@ export default function UserManagement() {
             <CardTitle>Créer un utilisateur</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {createError && (
+              <div style={{ color: 'red', fontWeight: 'bold', marginBottom: 8 }}>{createError}</div>
+            )}
             <Input placeholder="Nom d'utilisateur" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} />
             <Input placeholder="Nom complet" value={newFullName} onChange={(e) => setNewFullName(e.target.value)} />
             <Input placeholder="Mot de passe" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
@@ -259,8 +269,8 @@ export default function UserManagement() {
             <AlertDialogFooter>
               <AlertDialogCancel>Annuler</AlertDialogCancel>
               <AlertDialogAction onClick={() => {
-                if (!passwordDialog.newPassword) { toast.error('Mot de passe requis'); return; }
-                if (passwordDialog.newPassword !== passwordDialog.confirm) { toast.error('Les mots de passe ne correspondent pas'); return; }
+                if (!passwordDialog.newPassword) { setCreateError('Mot de passe requis'); return; }
+                if (passwordDialog.newPassword !== passwordDialog.confirm) { setCreateError('Les mots de passe ne correspondent pas'); return; }
                 setPasswordMutation.mutate({ username: passwordDialog.user.username, newPassword: passwordDialog.newPassword });
               }}>Définir</AlertDialogAction>
             </AlertDialogFooter>

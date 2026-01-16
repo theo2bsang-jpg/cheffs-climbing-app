@@ -209,7 +209,7 @@ export async function verifyUserPassword({ email, password }) {
 
 /** Create user offline; only admins can set is_global_admin flag. */
 export async function createUser({
-  email,
+  username,
   password,
   full_name,
   spray_wall_par_defaut = null,
@@ -219,10 +219,10 @@ export async function createUser({
   await ensureUsersDbSeeded();
   const db = readDb() ?? { version: 1, users: [] };
 
-  const normalizedEmail = String(email).trim().toLowerCase();
-  if (!normalizedEmail) throw new Error("Email required");
-  if ((db.users ?? []).some((u) => u.email?.toLowerCase() === normalizedEmail)) {
-    throw new Error("Email already exists");
+  const normalizedUsername = String(username).trim();
+  if (!normalizedUsername) throw new Error("Username required");
+  if ((db.users ?? []).some((u) => u.username === normalizedUsername)) {
+    throw new Error("Username already exists");
   }
 
   // Only allow creating an admin user if the currently-logged-in user is an admin.
@@ -238,8 +238,8 @@ export async function createUser({
 
   const user = {
     id: nextId(db.users ?? []),
-    email: normalizedEmail,
-    full_name: full_name ?? normalizedEmail,
+    username: normalizedUsername,
+    full_name: full_name ?? normalizedUsername,
     spray_wall_par_defaut,
     role,
     is_global_admin: effectiveIsGlobalAdmin,

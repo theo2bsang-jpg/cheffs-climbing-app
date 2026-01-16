@@ -1,8 +1,5 @@
 /** JWT helpers and Express guards for cookie-based auth. */
 import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 // Require a strong JWT secret in production
 if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {

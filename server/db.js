@@ -3,9 +3,6 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 import bcrypt from 'bcryptjs';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 // Allow overriding DB file location via DATA_DIR env (useful for containers/volumes)
 // If not set, place the DB in the current working directory (usually the `server` folder)

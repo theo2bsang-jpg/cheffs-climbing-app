@@ -48,6 +48,18 @@ export default function ContiBoucleView() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Fetch sprayWall using the spray_wall_id from boucle
+  const { data: sprayWall } = useQuery({
+    queryKey: ['sprayWall', boucle?.spray_wall_id],
+    queryFn: async () => {
+      if (!boucle?.spray_wall_id) return null;
+      const { SprayWall } = await import("@/api/entities");
+      return SprayWall.get(boucle.spray_wall_id);
+    },
+    enabled: !!boucle?.spray_wall_id,
+    staleTime: 5 * 60 * 1000,
+  });
+
   // Fetch holds to render annotated preview
   const { data: holds = [] } = useQuery({
     queryKey: ['holds', boucle?.spray_wall_id],

@@ -164,7 +164,9 @@ export default function BelleOuvertureCreate() {
         created_by: user?.username
       };
       console.log('Creating belle ouverture with:', payload);
-      return await BelleOuverture.create(payload);
+      // Dynamic import must be inside the function to ensure BelleOuverture is defined in the right scope
+      const entities = await import("@/api/entities");
+      return await entities.BelleOuverture.create(payload);
     },
     onSuccess: (data) => {
       console.log('Belle ouverture created:', data);

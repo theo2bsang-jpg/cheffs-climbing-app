@@ -569,6 +569,6 @@ if (fs.existsSync(distPath)) {
   console.warn('Build folder not found at', distPath, '- run `npm run build` first');
 }
 
-app.listen(PORT, () => {
-  console.log(`Auth server listening on http://localhost:${PORT} (env=${process.env.NODE_ENV || 'development'})`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Auth server listening on http://0.0.0.0:${PORT} (env=${process.env.NODE_ENV || 'development'})`);
 });

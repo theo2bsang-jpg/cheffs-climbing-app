@@ -53,8 +53,7 @@ A modern full-stack climbing application with spray wall visualization, boulder 
    Frontend runs on http://localhost:5173
 
 4. **Default admin credentials:**
-   - Email: `admin@example.com`
-   - Password: `admin`
+   - Set your admin email and password in the .env file for production. Do not share credentials publicly.
 
 ## Production Deployment
 

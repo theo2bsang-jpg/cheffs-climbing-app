@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import { ContiBoucle, SprayWall, Hold } from "@/api/entities";
+// import { ContiBoucle, SprayWall, Hold } from "@/api/entities";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -17,6 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
+import { User } from "@/api/entities";
 
 /** Play a conti loop with random traversal support and holds preview. */
 export default function ContiBoucleView() {
@@ -39,39 +40,35 @@ export default function ContiBoucleView() {
   // Fetch current conti boucle
   const { data: boucle } = useQuery({
     queryKey: ['contiBoucle', boucleId],
-    queryFn: () => ContiBoucle.get(boucleId),
+    queryFn: async () => {
+      const { ContiBoucle } = await import("@/api/entities");
+      return ContiBoucle.get(boucleId);
+    },
     enabled: !!boucleId,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  // Fetch spray wall for context and photo
-  const { data: sprayWall } = useQuery({
-    queryKey: ['sprayWall', boucle?.spray_wall_id],
-    queryFn: () => SprayWall.get(boucle.spray_wall_id),
-    enabled: !!boucle?.spray_wall_id,
     staleTime: 5 * 60 * 1000,
   });
 
   // Fetch holds to render annotated preview
   const { data: holds = [] } = useQuery({
     queryKey: ['holds', boucle?.spray_wall_id],
-    queryFn: () => Hold.filter({ spray_wall_id: boucle.spray_wall_id }),
+    queryFn: async () => {
+      const { Hold } = await import("@/api/entities");
+      return Hold.filter({ spray_wall_id: boucle.spray_wall_id });
+    },
     enabled: !!boucle?.spray_wall_id,
     staleTime: 5 * 60 * 1000,
   });
-
-  /** When in random mode with cached history, stay aligned to stored index. */
-  React.useEffect(() => {
-    if (fromRandom && history.length > 0 && !boucleId) {
-      const currentId = history[currentIndex];
-      if (currentId) {
-        const params = new URLSearchParams(window.location.search);
-        params.set('id', currentId);
-        navigate(`${createPageUrl("ContiBoucleView")}?${params.toString()}`, { replace: true });
-        window.location.reload();
+    React.useEffect(() => {
+      if (fromRandom && history.length > 0 && !boucleId) {
+        const currentId = history[currentIndex];
+        if (currentId) {
+          const params = new URLSearchParams(window.location.search);
+          params.set('id', currentId);
+          navigate(`${createPageUrl("ContiBoucleView")}?${params.toString()}`, { replace: true });
+          window.location.reload();
+        }
       }
-    }
-  }, [fromRandom, history, currentIndex, boucleId, navigate]);
+    }, [fromRandom, history, currentIndex, boucleId, navigate]);
 
   /** Go to previous random selection in history. */
   const handlePrevious = () => {
@@ -194,20 +191,27 @@ export default function ContiBoucleView() {
         </h1>
         <p className="text-gray-600 mb-6">{sprayWall.nom}</p>
 
-        {boucle.prise_remplacee && (
-          <div className="mb-6 p-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg flex items-start gap-3">
-            <AlertTriangle className="w-6 h-6 text-yellow-600 mt-0.5" />
-            <div>
-              <p className="font-semibold text-yellow-900">
-                 Une ou plusieurs prises ont été remplacées
-              </p>
-              <p className="text-sm text-yellow-800 mt-1">
-                Cette boucle nécessite une mise à jour
-              </p>
+        {(() => {
+          const missingCount = boucle.holds && holds ? boucle.holds.filter(h => !holds.find(ah => ah.id === h.hold_id)).length : 0;
+          const shouldShow = Boolean(boucle.prise_remplacee) || missingCount > 0;
+          return shouldShow ? (
+            <div className="mb-6 p-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg flex items-start gap-3">
+              <AlertTriangle className="w-6 h-6 text-yellow-600 mt-0.5" />
+              <div>
+                <p className="font-semibold text-yellow-900">
+                  {missingCount > 0
+                    ? `${missingCount} prise${missingCount > 1 ? 's' : ''} à remplacer`
+                    : 'Une ou plusieurs prises ont été remplacées'}
+                </p>
+                <p className="text-sm text-yellow-800 mt-1">
+                  Cette boucle nécessite une mise à jour
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          ) : null;
+        })()}
 
+        {/* BoulderPreview renders the preview and metadata. If a stray value is rendered here, remove it. */}
         <BoulderPreview
           photoUrl={sprayWall.photo_url}
           holds={boucle.holds}
@@ -230,12 +234,11 @@ export default function ContiBoucleView() {
 
               if (!holdData) {
                 return (
-                  <div key={idx} className="flex items-center gap-3 p-2 bg-red-100 rounded border-2 border-red-300">
-                    <span className="text-sm font-bold text-slate-700 min-w-[24px]">{hold.ordre}</span>
+                  <div key={idx} className="flex items-center gap-3 p-2 bg-red-700 rounded border-2 border-red-800">
                     <div className="w-6 h-6 rounded-full bg-red-600 border-2 border-white shadow-md flex items-center justify-center text-white text-xs font-bold">
                       ❌
                     </div>
-                    <span className="font-semibold text-red-900 line-through">[SUPPR] {hold.nom || hold.hold_nom || 'Prise inconnue'}</span>
+                    <span className="font-semibold text-white line-through">{hold.nom || hold.hold_nom || 'Prise inconnue'}</span>
                   </div>
                 );
               }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ContiBoucle, SprayWall, Hold, User } from "@/api/entities";
+// import { ContiBoucle, SprayWall, Hold, User } from "@/api/entities";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import HoldSelector from '../components/spraywall/HoldSelector';
 import BoulderPreview from '../components/spraywall/BoulderPreview';
+import { User } from "@/api/entities";
 
 const niveaux = ["4a", "4b", "4c", "5a", "5b", "5c", "6a", "6a+", "6b", "6b+", "6c", "6c+", "7a", "7a+", "7b", "7b+", "7c", "7c+", "8a", "8a+", "8b", "8b+", "8c", "8c+", "9a", "9a+", "9b", "9b+", "9c"];
 
@@ -46,21 +47,30 @@ export default function ContiBoucleEdit() {
 
   const { data: boucle } = useQuery({
     queryKey: ['contiBoucle', boucleId],
-    queryFn: () => ContiBoucle.get(boucleId),
+    queryFn: async () => {
+      const { ContiBoucle } = await import("@/api/entities"); // Dynamic import for code-splitting
+      return ContiBoucle.get(boucleId);
+    },
     enabled: !!boucleId,
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: sprayWall } = useQuery({
     queryKey: ['sprayWall', boucle?.spray_wall_id],
-    queryFn: () => SprayWall.get(boucle.spray_wall_id),
+    queryFn: async () => {
+      const { SprayWall } = await import("@/api/entities"); // Dynamic import for code-splitting
+      return SprayWall.get(boucle.spray_wall_id);
+    },
     enabled: !!boucle?.spray_wall_id,
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: holds = [] } = useQuery({
     queryKey: ['holds', boucle?.spray_wall_id],
-    queryFn: () => Hold.filter({ spray_wall_id: boucle.spray_wall_id }),
+    queryFn: async () => {
+      const { Hold } = await import("@/api/entities"); // Dynamic import for code-splitting
+      return Hold.filter({ spray_wall_id: boucle.spray_wall_id });
+    },
     enabled: !!boucle?.spray_wall_id,
     staleTime: 5 * 60 * 1000,
   });
@@ -138,7 +148,8 @@ export default function ContiBoucleEdit() {
   // Admin/sub-admin delete
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      await ContiBoucle.delete(boucleId);
+      const { ContiBoucle } = await import("@/api/entities"); // Dynamic import for code-splitting
+      return await ContiBoucle.delete(boucleId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contiBoucles', boucle?.spray_wall_id] });

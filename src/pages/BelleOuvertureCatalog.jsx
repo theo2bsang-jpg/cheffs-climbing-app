@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BelleOuverture, User } from "@/api/entities";
+// import { BelleOuverture, User } from "@/api/entities";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -19,6 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { User } from "@/api/entities";
 
 const niveaux = ["4a", "4b", "4c", "5a", "5b", "5c", "6a", "6a+", "6b", "6b+", "6c", "6c+", "7a", "7a+", "7b", "7b+", "7c", "7c+", "8a", "8a+", "8b", "8b+", "8c", "8c+", "9a", "9a+", "9b", "9b+", "9c"];
 
@@ -35,6 +36,7 @@ export default function BelleOuvertureCatalog() {
   useEffect(() => {
     const loadUser = async () => {
       try {
+        const { User } = await import("@/api/entities");
         const currentUser = await User.me();
         setUser(currentUser);
       } catch (error) {
@@ -48,9 +50,12 @@ export default function BelleOuvertureCatalog() {
 
   const { data: bellesOuvertures = [] } = useQuery({
     queryKey: ['bellesOuvertures', sprayWallId],
-    queryFn: () => sprayWallId 
-      ? BelleOuverture.filter({ spray_wall_id: parseInt(sprayWallId) })
-      : BelleOuverture.list(),
+    queryFn: async () => {
+      const { BelleOuverture } = await import("@/api/entities");
+      return sprayWallId 
+        ? BelleOuverture.filter({ spray_wall_id: parseInt(sprayWallId) })
+        : BelleOuverture.list();
+    },
   });
 
   console.log('Belle Ouvertures data:', bellesOuvertures);
@@ -60,7 +65,10 @@ export default function BelleOuvertureCatalog() {
 
   // Admin delete entry and refresh list
   const deleteMutation = useMutation({
-    mutationFn: (id) => BelleOuverture.delete(id),
+    mutationFn: async (id) => {
+      const { BelleOuverture } = await import("@/api/entities");
+      return BelleOuverture.delete(id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bellesOuvertures'] });
       toast.success("Belle ouverture supprimée");

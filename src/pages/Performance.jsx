@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Ascension, Test, BlocMax, VoieMax, Boulder, ContiBoucle } from "@/api/entities";
+// import { User, Ascension, Test, BlocMax, VoieMax, Boulder, ContiBoucle } from "@/api/entities";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -34,6 +34,7 @@ import LevelBadge from '../components/shared/LevelBadge';
 import TestForm from '../components/performance/TestForm';
 import TestHistory from '../components/performance/TestHistory';
 import TestChart from '../components/performance/TestChart';
+import { User } from "@/api/entities";
 
 /** Track ascensions, tests, and maxes with logging flows and charts. */
 export default function Performance() {
@@ -69,9 +70,11 @@ export default function Performance() {
   useEffect(() => {
     const loadUser = async () => {
       try {
+        const { User } = await import("@/api/entities");
         const currentUser = await User.me();
         setUser(currentUser);
       } catch (error) {
+        const { User } = await import("@/api/entities");
         User.logout();
       }
     };
@@ -80,42 +83,61 @@ export default function Performance() {
 
   const { data: ascensions = [] } = useQuery({
     queryKey: ['ascensions', user?.email],
-    queryFn: () => Ascension.filter({ user_email: user.email }, '-date'),
+    queryFn: async () => {
+      const { Ascension } = await import("@/api/entities");
+      return Ascension.filter({ user_email: user.email }, '-date');
+    },
     enabled: !!user?.email,
   });
 
   const { data: tests = [] } = useQuery({
     queryKey: ['tests', user?.email],
-    queryFn: () => Test.filter({ user_email: user.email }, '-date'),
+    queryFn: async () => {
+      const { Test } = await import("@/api/entities");
+      return Test.filter({ user_email: user.email }, '-date');
+    },
     enabled: !!user?.email,
   });
 
   const { data: blocsMax = [] } = useQuery({
     queryKey: ['blocsMax'],
-    queryFn: () => BlocMax.list('-date'),
+    queryFn: async () => {
+      const { BlocMax } = await import("@/api/entities");
+      return BlocMax.list('-date');
+    },
     enabled: !!user,
   });
 
   const { data: voiesMax = [] } = useQuery({
     queryKey: ['voiesMax'],
-    queryFn: () => VoieMax.list('-date'),
+    queryFn: async () => {
+      const { VoieMax } = await import("@/api/entities");
+      return VoieMax.list('-date');
+    },
     enabled: !!user,
   });
 
   const { data: boulders = [] } = useQuery({
     queryKey: ['boulders', user?.spray_wall_par_defaut],
-    queryFn: () => Boulder.filter({ spray_wall_id: user.spray_wall_par_defaut }),
+    queryFn: async () => {
+      const { Boulder } = await import("@/api/entities");
+      return Boulder.filter({ spray_wall_id: user.spray_wall_par_defaut });
+    },
     enabled: !!user?.spray_wall_par_defaut && showDialog,
   });
 
   const { data: boucles = [] } = useQuery({
     queryKey: ['boucles', user?.spray_wall_par_defaut],
-    queryFn: () => ContiBoucle.filter({ spray_wall_id: user.spray_wall_par_defaut }),
+    queryFn: async () => {
+      const { ContiBoucle } = await import("@/api/entities");
+      return ContiBoucle.filter({ spray_wall_id: user.spray_wall_par_defaut });
+    },
     enabled: !!user?.spray_wall_par_defaut && showDialog,
   });
 
   const logAscensionMutation = useMutation({
     mutationFn: async (data) => {
+      const { Ascension } = await import("@/api/entities");
       await Ascension.create(data);
     },
     onSuccess: () => {
@@ -131,25 +153,37 @@ export default function Performance() {
   });
 
   const deleteAscensionMutation = useMutation({
-    mutationFn: (id) => Ascension.delete(id),
+    mutationFn: async (id) => {
+      const { Ascension } = await import("@/api/entities");
+      return Ascension.delete(id);
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['ascensions'] }); toast.success('Ascension supprimée'); },
     onError: () => toast.error('Erreur lors de la suppression'),
   });
 
   const deleteTestMutation = useMutation({
-    mutationFn: (id) => Test.delete(id),
+    mutationFn: async (id) => {
+      const { Test } = await import("@/api/entities");
+      return Test.delete(id);
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['tests'] }); toast.success('Test supprimé'); },
     onError: () => toast.error('Erreur lors de la suppression'),
   });
 
   const deleteBlocMaxMutation = useMutation({
-    mutationFn: (id) => BlocMax.delete(id),
+    mutationFn: async (id) => {
+      const { BlocMax } = await import("@/api/entities");
+      return BlocMax.delete(id);
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['blocsMax'] }); toast.success('Bloc max supprimé'); },
     onError: () => toast.error('Erreur lors de la suppression'),
   });
 
   const deleteVoieMaxMutation = useMutation({
-    mutationFn: (id) => VoieMax.delete(id),
+    mutationFn: async (id) => {
+      const { VoieMax } = await import("@/api/entities");
+      return VoieMax.delete(id);
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['voiesMax'] }); toast.success('Voie max supprimée'); },
     onError: () => toast.error('Erreur lors de la suppression'),
   });
@@ -187,6 +221,7 @@ export default function Performance() {
 
   const logTestMutation = useMutation({
     mutationFn: async (data) => {
+      const { Test } = await import("@/api/entities");
       await Test.create(data);
     },
     onSuccess: () => {
@@ -201,7 +236,10 @@ export default function Performance() {
   };
 
   const createBlocMaxMutation = useMutation({
-    mutationFn: (data) => BlocMax.create(data),
+    mutationFn: async (data) => {
+      const { BlocMax } = await import("@/api/entities");
+      return BlocMax.create(data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['blocsMax'] });
       toast.success('Bloc max enregistré');
@@ -216,7 +254,10 @@ export default function Performance() {
   });
 
   const createVoieMaxMutation = useMutation({
-    mutationFn: (data) => VoieMax.create(data),
+    mutationFn: async (data) => {
+      const { VoieMax } = await import("@/api/entities");
+      return VoieMax.create(data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['voiesMax'] });
       toast.success('Voie max enregistrée');

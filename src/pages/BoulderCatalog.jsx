@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Boulder, ContiBoucle, Hold } from "@/api/entities";
+// import { Boulder, ContiBoucle, Hold } from "@/api/entities";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -20,21 +20,30 @@ export default function BoulderCatalog() {
   // Load boulders for the wall
   const { data: boulders = [] } = useQuery({
     queryKey: ['boulders', sprayWallId],
-    queryFn: () => Boulder.filter({ spray_wall_id: sprayWallId }),
+    queryFn: async () => {
+      const { Boulder } = await import("@/api/entities");
+      return Boulder.filter({ spray_wall_id: sprayWallId });
+    },
     enabled: !!sprayWallId,
   });
 
   // Load conti boucles for the wall
   const { data: boucles = [] } = useQuery({
     queryKey: ['contiBoucles', sprayWallId],
-    queryFn: () => ContiBoucle.filter({ spray_wall_id: sprayWallId }),
+    queryFn: async () => {
+      const { ContiBoucle } = await import("@/api/entities");
+      return ContiBoucle.filter({ spray_wall_id: sprayWallId });
+    },
     enabled: !!sprayWallId,
   });
 
   // Holds needed to flag missing/replaced items
   const { data: allHolds = [] } = useQuery({
     queryKey: ['holds', sprayWallId],
-    queryFn: () => Hold.filter({ spray_wall_id: sprayWallId }),
+    queryFn: async () => {
+      const { Hold } = await import("@/api/entities");
+      return Hold.filter({ spray_wall_id: sprayWallId });
+    },
     enabled: !!sprayWallId,
   });
 

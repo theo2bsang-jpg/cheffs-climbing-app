@@ -42,11 +42,13 @@ export default function UserManagement() {
 
   const { data: users = [], isLoading: usersLoading } = useQuery({
     queryKey: ['users'],
-    queryFn: () => User.list(),
+    queryFn: async () => {
+      return User.list();
+    },
     enabled: !!user?.is_global_admin,
   });
 
-  const [newEmail, setNewEmail] = useState('');
+  const [newUsername, setNewUsername] = useState('');
   const [newFullName, setNewFullName] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newIsAdmin, setNewIsAdmin] = useState(false);
@@ -54,60 +56,68 @@ export default function UserManagement() {
   const [userDeleteDialog, setUserDeleteDialog] = useState({ open: false, user: null });
   const [passwordDialog, setPasswordDialog] = useState({ open: false, user: null, newPassword: '', confirm: '' });
   const [adminConfirm, setAdminConfirm] = useState({ open: false, user: null, action: null });
-  const [passwordSuccessDialog, setPasswordSuccessDialog] = useState({ open: false, email: null });
+  const [passwordSuccessDialog, setPasswordSuccessDialog] = useState({ open: false, username: null });
   const [userSearch, setUserSearch] = useState('');
   const [userPage, setUserPage] = useState(0);
   const USERS_PAGE_SIZE = 8;
 
   const createUserMutation = useMutation({
-    mutationFn: (data) => User.create(data),
+    mutationFn: async (data) => {
+      return User.create(data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success('Utilisateur créé');
-      setNewEmail(''); setNewFullName(''); setNewPassword(''); setNewIsAdmin(false);
+      setNewUsername(''); setNewFullName(''); setNewPassword(''); setNewIsAdmin(false);
     },
     onError: (err) => toast.error(err?.message || 'Erreur création utilisateur'),
   });
 
   const updateUserMutation = useMutation({
-    mutationFn: ({ email, patch }) => User.updateByEmail(email, patch),
+    mutationFn: async ({ username, patch }) => {
+      return User.updateByUsername(username, patch);
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['users'] }); toast.success('Utilisateur mis à jour'); },
     onError: () => toast.error('Erreur lors de la mise à jour'),
   });
 
   const deleteUserMutation = useMutation({
-    mutationFn: (email) => User.deleteByEmail(email),
+    mutationFn: async (username) => {
+      return User.deleteByUsername(username);
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['users'] }); toast.success('Utilisateur supprimé'); },
     onError: () => toast.error('Erreur lors de la suppression'),
   });
 
   const setPasswordMutation = useMutation({
-    mutationFn: ({ email, newPassword }) => User.setPasswordByEmail(email, newPassword),
+    mutationFn: async ({ username, newPassword }) => {
+      return User.setPasswordByUsername(username, newPassword);
+    },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success('Mot de passe défini');
-      const targetEmail = variables?.email || passwordDialog.user?.email || 'utilisateur';
+      const targetUsername = variables?.username || passwordDialog.user?.username || 'utilisateur';
       setPasswordDialog({ open: false, user: null, newPassword: '', confirm: '' });
-      setPasswordSuccessDialog({ open: true, email: targetEmail });
+      setPasswordSuccessDialog({ open: true, username: targetUsername });
     },
     onError: (err) => toast.error(err?.message || 'Erreur lors du changement de mot de passe'),
   });
 
   const handleCreate = () => {
-    if (!newEmail || !newPassword) return toast.error('Email et mot de passe requis');
-    createUserMutation.mutate({ email: newEmail, password: newPassword, full_name: newFullName, is_global_admin: newIsAdmin });
+    if (!newUsername || !newPassword) return toast.error('Nom d\'utilisateur et mot de passe requis');
+    createUserMutation.mutate({ username: newUsername, password: newPassword, full_name: newFullName, is_global_admin: newIsAdmin });
   };
 
-  const handleToggleAdmin = (u) => updateUserMutation.mutate({ email: u.email, patch: { is_global_admin: !u.is_global_admin } });
+  const handleToggleAdmin = (u) => updateUserMutation.mutate({ username: u.username, patch: { is_global_admin: !u.is_global_admin } });
   const confirmAdminToggle = () => {
     if (!adminConfirm.user || !adminConfirm.action) return setAdminConfirm({ open: false, user: null, action: null });
     const promote = adminConfirm.action === 'promote';
-    updateUserMutation.mutate({ email: adminConfirm.user.email, patch: { is_global_admin: promote } });
+    updateUserMutation.mutate({ username: adminConfirm.user.username, patch: { is_global_admin: promote } });
     setAdminConfirm({ open: false, user: null, action: null });
   };
   const handleDelete = (u) => setUserDeleteDialog({ open: true, user: u });
   const confirmDelete = () => {
-    if (userDeleteDialog.user) deleteUserMutation.mutate(userDeleteDialog.user.email);
+    if (userDeleteDialog.user) deleteUserMutation.mutate(userDeleteDialog.user.username);
     setUserDeleteDialog({ open: false, user: null });
   };
 
@@ -125,7 +135,7 @@ export default function UserManagement() {
   const filtered = users.filter(u => {
     const q = userSearch.toLowerCase().trim();
     if (!q) return true;
-    return (u.email || '').toLowerCase().includes(q) || (u.full_name || '').toLowerCase().includes(q);
+    return (u.username || '').toLowerCase().includes(q) || (u.full_name || '').toLowerCase().includes(q);
   });
   const start = userPage * USERS_PAGE_SIZE;
   const pageItems = filtered.slice(start, start + USERS_PAGE_SIZE);
@@ -146,7 +156,7 @@ export default function UserManagement() {
             <CardTitle>Créer un utilisateur</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Input placeholder="Email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
+            <Input placeholder="Nom d'utilisateur" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} />
             <Input placeholder="Nom complet" value={newFullName} onChange={(e) => setNewFullName(e.target.value)} />
             <Input placeholder="Mot de passe" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
             <div className="flex items-center gap-3">
@@ -163,16 +173,16 @@ export default function UserManagement() {
           </CardHeader>
           <CardContent>
             <div className="mb-3">
-              <Input placeholder="Rechercher par email ou nom" value={userSearch} onChange={(e) => { setUserSearch(e.target.value); setUserPage(0); }} />
+              <Input placeholder="Rechercher par nom d'utilisateur ou nom" value={userSearch} onChange={(e) => { setUserSearch(e.target.value); setUserPage(0); }} />
             </div>
 
             <div className="space-y-2">
               {usersLoading ? <p>Chargement...</p> : (
                 <>
                   {pageItems.map(u => (
-                    <div key={u.email} className="flex items-center justify-between p-2 border rounded">
+                    <div key={u.username} className="flex items-center justify-between p-2 border rounded">
                       <div>
-                        <div className="font-medium">{u.email} {u.is_global_admin && <span className="text-xs text-violet-700 ml-2">(admin)</span>}</div>
+                        <div className="font-medium">{u.username} {u.is_global_admin && <span className="text-xs text-violet-700 ml-2">(admin)</span>}</div>
                         <div className="text-sm text-gray-600">{u.full_name}</div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -202,7 +212,7 @@ export default function UserManagement() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Supprimer cet utilisateur ?</AlertDialogTitle>
-              <AlertDialogDescription>Êtes-vous sûr de vouloir supprimer "{userDeleteDialog.user?.email}" ? Cette action est irréversible.</AlertDialogDescription>
+              <AlertDialogDescription>Êtes-vous sûr de vouloir supprimer "{userDeleteDialog.user?.username}" ? Cette action est irréversible.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Annuler</AlertDialogCancel>
@@ -217,8 +227,8 @@ export default function UserManagement() {
               <AlertDialogTitle>{adminConfirm.action === 'promote' ? 'Promouvoir cet utilisateur ?' : 'Révoquer les droits d\'administrateur ?'}</AlertDialogTitle>
               <AlertDialogDescription>
                 {adminConfirm.action === 'promote'
-                  ? `Voulez-vous promouvoir "${adminConfirm.user?.email}" en administrateur global ?`
-                  : `Voulez-vous révoquer les droits d'administrateur pour "${adminConfirm.user?.email}" ?`}
+                  ? `Voulez-vous promouvoir "${adminConfirm.user?.username}" en administrateur global ?`
+                  : `Voulez-vous révoquer les droits d'administrateur pour "${adminConfirm.user?.username}" ?`}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -234,7 +244,7 @@ export default function UserManagement() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Définir mot de passe</AlertDialogTitle>
-              <AlertDialogDescription>Définir un nouveau mot de passe pour "{passwordDialog.user?.email}".</AlertDialogDescription>
+              <AlertDialogDescription>Définir un nouveau mot de passe pour "{passwordDialog.user?.username}".</AlertDialogDescription>
             </AlertDialogHeader>
             <div className="p-4 space-y-3">
               <div>
@@ -251,7 +261,7 @@ export default function UserManagement() {
               <AlertDialogAction onClick={() => {
                 if (!passwordDialog.newPassword) { toast.error('Mot de passe requis'); return; }
                 if (passwordDialog.newPassword !== passwordDialog.confirm) { toast.error('Les mots de passe ne correspondent pas'); return; }
-                setPasswordMutation.mutate({ email: passwordDialog.user.email, newPassword: passwordDialog.newPassword });
+                setPasswordMutation.mutate({ username: passwordDialog.user.username, newPassword: passwordDialog.newPassword });
               }}>Définir</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -261,7 +271,7 @@ export default function UserManagement() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Mot de passe défini</AlertDialogTitle>
-              <AlertDialogDescription>Le mot de passe pour "{passwordSuccessDialog.email}" a été mis à jour avec succès.</AlertDialogDescription>
+              <AlertDialogDescription>Le mot de passe pour "{passwordSuccessDialog.username}" a été mis à jour avec succès.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogAction onClick={() => setPasswordSuccessDialog({ open: false, email: null })}>OK</AlertDialogAction>

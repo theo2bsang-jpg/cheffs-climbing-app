@@ -73,7 +73,7 @@ export default function BoulderPreview({
           const isMissing = !position;
 
           if (isMissing) {
-            // Display red X for deleted hold at original position or fallback position
+            // Display red X for deleted hold at original position or fallback position (no order number)
             return (
               <div
                 key={index}

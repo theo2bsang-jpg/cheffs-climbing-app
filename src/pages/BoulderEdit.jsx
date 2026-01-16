@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Boulder, SprayWall, Hold, User } from "@/api/entities";
+// import { Boulder, SprayWall, Hold, User } from "@/api/entities";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import HoldSelector from '../components/spraywall/HoldSelector';
 import BoulderPreview from '../components/spraywall/BoulderPreview';
+import { User } from "@/api/entities";
 
 const niveaux = ["4a", "4b", "4c", "5a", "5b", "5c", "6a", "6a+", "6b", "6b+", "6c", "6c+", "7a", "7a+", "7b", "7b+", "7c", "7c+", "8a", "8a+", "8b", "8b+", "8c", "8c+", "9a", "9a+", "9b", "9b+", "9c"];
 
@@ -46,21 +47,30 @@ export default function BoulderEdit() {
 
   const { data: boulder } = useQuery({
     queryKey: ['boulder', boulderId],
-    queryFn: () => Boulder.get(boulderId),
+    queryFn: async () => {
+      const { Boulder } = await import("@/api/entities");
+      return Boulder.get(boulderId);
+    },
     enabled: !!boulderId,
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: sprayWall } = useQuery({
     queryKey: ['sprayWall', boulder?.spray_wall_id],
-    queryFn: () => SprayWall.get(boulder.spray_wall_id),
+    queryFn: async () => {
+      const { SprayWall } = await import("@/api/entities");
+      return SprayWall.get(boulder.spray_wall_id);
+    },
     enabled: !!boulder?.spray_wall_id,
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: holds = [] } = useQuery({
     queryKey: ['holds', boulder?.spray_wall_id],
-    queryFn: () => Hold.filter({ spray_wall_id: boulder.spray_wall_id }),
+    queryFn: async () => {
+      const { Hold } = await import("@/api/entities");
+      return Hold.filter({ spray_wall_id: boulder.spray_wall_id });
+    },
     enabled: !!boulder?.spray_wall_id,
     staleTime: 5 * 60 * 1000,
   });

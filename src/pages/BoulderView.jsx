@@ -1,5 +1,5 @@
 import React from 'react';
-import { Boulder, SprayWall, Hold } from "@/api/entities";
+// import { Boulder, SprayWall, Hold } from "@/api/entities";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -17,6 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
+import { User } from "@/api/entities";
 
 /** Show a boulder with hold visualization; supports random traversal navigation. */
 export default function BoulderView() {
@@ -39,7 +40,10 @@ export default function BoulderView() {
   // Fetch current boulder
   const { data: boulder } = useQuery({
     queryKey: ['boulder', boulderId],
-    queryFn: () => Boulder.get(boulderId),
+    queryFn: async () => {
+      const { Boulder } = await import("@/api/entities");
+      return Boulder.get(boulderId);
+    },
     enabled: !!boulderId,
     staleTime: 5 * 60 * 1000,
   });
@@ -47,7 +51,10 @@ export default function BoulderView() {
   // Fetch spray wall for context and photo
   const { data: sprayWall } = useQuery({
     queryKey: ['sprayWall', boulder?.spray_wall_id],
-    queryFn: () => SprayWall.get(boulder.spray_wall_id),
+    queryFn: async () => {
+      const { SprayWall } = await import("@/api/entities");
+      return SprayWall.get(boulder.spray_wall_id);
+    },
     enabled: !!boulder?.spray_wall_id,
     staleTime: 5 * 60 * 1000,
   });
@@ -55,7 +62,10 @@ export default function BoulderView() {
   // Fetch holds to render annotated preview
   const { data: holds = [] } = useQuery({
     queryKey: ['holds', boulder?.spray_wall_id],
-    queryFn: () => Hold.filter({ spray_wall_id: boulder.spray_wall_id }),
+    queryFn: async () => {
+      const { Hold } = await import("@/api/entities");
+      return Hold.filter({ spray_wall_id: boulder.spray_wall_id });
+    },
     enabled: !!boulder?.spray_wall_id,
     staleTime: 5 * 60 * 1000,
   });
@@ -196,19 +206,25 @@ export default function BoulderView() {
         </h1>
         <p className="text-gray-600 mb-6">{sprayWall.nom}</p>
 
-        {boulder.prise_remplacee && (
-          <div className="mb-6 p-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg flex items-start gap-3">
-            <AlertTriangle className="w-6 h-6 text-yellow-600 mt-0.5" />
-            <div>
-              <p className="font-semibold text-yellow-900">
-                ⚠️ Une ou plusieurs prises ont été remplacées
-              </p>
-              <p className="text-sm text-yellow-800 mt-1">
-                Ce bloc nécessite une mise à jour
-              </p>
+        {(() => {
+          const missingCount = boulder.holds && holds ? boulder.holds.filter(h => !holds.find(ah => ah.id === h.hold_id)).length : 0;
+          const shouldShow = Boolean(boulder.prise_remplacee) || missingCount > 0;
+          return shouldShow ? (
+            <div className="mb-6 p-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg flex items-start gap-3">
+              <AlertTriangle className="w-6 h-6 text-yellow-600 mt-0.5" />
+              <div>
+                <p className="font-semibold text-yellow-900">
+                  {missingCount > 0
+                    ? `${missingCount} prise${missingCount > 1 ? 's' : ''} à remplacer`
+                    : '⚠️ Une ou plusieurs prises ont été remplacées'}
+                </p>
+                <p className="text-sm text-yellow-800 mt-1">
+                  Ce bloc nécessite une mise à jour
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          ) : null;
+        })()}
 
         <BoulderPreview
           photoUrl={sprayWall.photo_url}
@@ -231,12 +247,11 @@ export default function BoulderView() {
 
               if (!holdData) {
                 return (
-                  <div key={idx} className="flex items-center gap-3 p-2 bg-red-50 rounded border-2 border-red-300">
+                  <div key={idx} className="flex items-center gap-3 p-2 bg-red-700 rounded border-2 border-red-800">
                     <div className="w-7 h-7 rounded-full bg-red-600 border-2 border-white shadow-md flex items-center justify-center text-white text-xs font-bold">
                       ❌
                     </div>
-                    <span className="font-semibold text-slate-900 line-through">[SUPPR] {hold.hold_nom || 'Prise inconnue'}</span>
-                    <span className="text-red-700 text-sm font-bold">Supprimée</span>
+                    <span className="font-semibold text-white line-through">{hold.hold_nom || 'Prise inconnue'}</span>
                   </div>
                 );
               }

@@ -1,3 +1,4 @@
+import { User } from "@/api/entities";
 
 /** Global night-mode wrapper applying custom theming variables. */
 export default function Layout({ children }) {

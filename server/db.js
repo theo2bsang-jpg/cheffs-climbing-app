@@ -40,7 +40,7 @@ if (needInit) {
   db.exec(`
     CREATE TABLE users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT UNIQUE NOT NULL,
+      username TEXT UNIQUE NOT NULL,
       full_name TEXT,
       role TEXT DEFAULT 'user',
       is_global_admin INTEGER DEFAULT 0,
@@ -52,10 +52,10 @@ if (needInit) {
   `);
 
   // If the DB was just initialized, create a default admin account.
-  // Credentials are taken from env: ADMIN_EMAIL and ADMIN_PASSWORD.
+  // Credentials are taken from env: ADMIN_USERNAME and ADMIN_PASSWORD.
   // In production, require ADMIN_PASSWORD to be set to avoid leaking credentials.
   try {
-    const adminEmail = (process.env.ADMIN_EMAIL || 'admin@local.dev').toLowerCase();
+    const adminUsername = (process.env.ADMIN_USERNAME || 'admin').toLowerCase();
     let adminPassword = process.env.ADMIN_PASSWORD;
     if (process.env.NODE_ENV === 'production' && !adminPassword) {
       throw new Error('ADMIN_PASSWORD must be set in production to create the initial admin user');
@@ -67,14 +67,14 @@ if (needInit) {
     const salt = bcrypt.genSaltSync(10);
     const hash = bcrypt.hashSync(adminPassword, salt);
     const now = Date.now();
-    const stmt = db.prepare(`INSERT OR IGNORE INTO users (email, full_name, role, is_global_admin, password_hash, created_at, updated_at)
-      VALUES (?, ?, 'user', 1, ?, ?, ?)`);
-    stmt.run(adminEmail, process.env.ADMIN_NAME || 'Admin', hash, now, now);
+    const stmt = db.prepare(`INSERT OR IGNORE INTO users (username, full_name, role, is_global_admin, password_hash, password_salt, created_at, updated_at)
+      VALUES (?, ?, 'user', 1, ?, ?, ?, ?)`);
+    stmt.run(adminUsername, process.env.ADMIN_NAME || 'Admin', hash, salt, now, now);
     // If we generated the password (development), write it to a file instead of printing it.
     if (!process.env.ADMIN_PASSWORD) {
       try {
         const pwPath = path.resolve(process.cwd(), 'admin-password.txt');
-        fs.writeFileSync(pwPath, `email: ${adminEmail}\npassword: ${adminPassword}\n`);
+        fs.writeFileSync(pwPath, `username: ${adminUsername}\npassword: ${adminPassword}\n`);
         // attempt to set restrictive permissions on POSIX systems
         try { fs.chmodSync(pwPath, 0o600); } catch (e) { /* ignore */ }
         // eslint-disable-next-line no-console
@@ -105,36 +105,36 @@ try {
 }
 
 /**
- * Fetch a user by email (case-insensitive).
- * @param {string} email - The user's email address.
+ * Fetch a user by username (case-insensitive).
+ * @param {string} username - The user's username.
  * @returns {object|null} The user row or null if not found.
  */
-export function getUserByEmail(email) {
-  const row = db.prepare('SELECT * FROM users WHERE lower(email) = lower(?)').get(email);
+export function getUserByUsername(username) {
+  const row = db.prepare('SELECT * FROM users WHERE lower(username) = lower(?)').get(username);
   return row || null;
 }
 
 /**
  * Create a new user with the given data.
- * @param {object} params - User data (email, full_name, password_hash, etc).
+ * @param {object} params - User data (username, full_name, password_hash, etc).
  * @returns {object} The created user row.
  */
-export function createUser({ email, full_name, password_hash, password_salt = null, is_global_admin = 0, spray_wall_par_defaut = null }) {
+export function createUser({ username, full_name, password_hash, password_salt = null, is_global_admin = 0, spray_wall_par_defaut = null }) {
   const now = Date.now();
-  const stmt = db.prepare(`INSERT INTO users (email, full_name, role, is_global_admin, password_hash, password_salt, spray_wall_par_defaut, created_at, updated_at)
+  const stmt = db.prepare(`INSERT INTO users (username, full_name, role, is_global_admin, password_hash, password_salt, spray_wall_par_defaut, created_at, updated_at)
     VALUES (?, ?, 'user', ?, ?, ?, ?, ?, ?)`);
-  const info = stmt.run(email, full_name, is_global_admin ? 1 : 0, password_hash, password_salt, spray_wall_par_defaut, now, now);
+  const info = stmt.run(username, full_name, is_global_admin ? 1 : 0, password_hash, password_salt, spray_wall_par_defaut, now, now);
   return db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid);
 }
 
 /**
- * Update a user by email with a patch object.
- * @param {string} email - The user's email address.
+ * Update a user by username with a patch object.
+ * @param {string} username - The user's username.
  * @param {object} patch - Partial user fields to update.
  * @returns {object|null} The updated user row or null if not found.
  */
-export function updateUserByEmail(email, patch) {
-  const existing = getUserByEmail(email);
+export function updateUserByUsername(username, patch) {
+  const existing = getUserByUsername(username);
   if (!existing) return null;
   const updated = {
     ...existing,
@@ -147,12 +147,12 @@ export function updateUserByEmail(email, patch) {
 }
 
 /**
- * Delete a user by email.
- * @param {string} email - The user's email address.
+ * Delete a user by username.
+ * @param {string} username - The user's username.
  * @returns {object|null} The deleted user row or null if not found.
  */
-export function deleteUserByEmail(email) {
-  const existing = getUserByEmail(email);
+export function deleteUserByUsername(username) {
+  const existing = getUserByUsername(username);
   if (!existing) return null;
   db.prepare('DELETE FROM users WHERE id = ?').run(existing.id);
   return existing;
@@ -163,7 +163,7 @@ export function deleteUserByEmail(email) {
  * @returns {object[]} Array of user rows.
  */
 export function listUsers() {
-  return db.prepare('SELECT id, email, full_name, role, is_global_admin, spray_wall_par_defaut, created_at, updated_at FROM users ORDER BY id').all();
+  return db.prepare('SELECT id, username, full_name, role, is_global_admin, spray_wall_par_defaut, created_at, updated_at FROM users ORDER BY id').all();
 }
 
 // Refresh token helpers

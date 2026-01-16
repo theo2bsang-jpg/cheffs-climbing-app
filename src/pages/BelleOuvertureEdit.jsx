@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SprayWall, BelleOuverture } from "@/api/entities";
+// import { SprayWall, BelleOuverture } from "@/api/entities";
 import { UploadFile } from "@/api/integrations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -28,6 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { User } from "@/api/entities";
 
 const niveaux = ["4a", "4b", "4c", "5a", "5b", "5c", "6a", "6a+", "6b", "6b+", "6c", "6c+", "7a", "7a+", "7b", "7b+", "7c", "7c+", "8a", "8a+", "8b", "8b+", "8c", "8c+", "9a", "9a+", "9b", "9b+", "9c"];
 
@@ -84,7 +85,10 @@ export default function BelleOuvertureEdit() {
   // Fetch spray wall context to display name and keep scope
   const { data: sprayWall } = useQuery({
     queryKey: ['sprayWall', sprayWallId],
-    queryFn: () => SprayWall.get(sprayWallId),
+    queryFn: async () => {
+      const { SprayWall } = await import("@/api/entities");
+      return SprayWall.get(sprayWallId);
+    },
     enabled: !!sprayWallId,
   });
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { User, SprayWall, Boulder, ContiBoucle } from "@/api/entities";
+// import { User, SprayWall, Boulder, ContiBoucle } from "@/api/entities";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -7,6 +7,7 @@ import { ArrowLeft, Grid3x3, Dices, Plus, Edit, Mountain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { User } from "@/api/entities";
 
 /** Hub page for a spray wall: links to catalog, random, creation, and admin actions. */
 export default function SprayWallDashboard() {
@@ -30,21 +31,30 @@ export default function SprayWallDashboard() {
   // Fetch spray wall details to render name/location
   const { data: sprayWall } = useQuery({
     queryKey: ['sprayWall', sprayWallId],
-    queryFn: () => SprayWall.get(sprayWallId),
+    queryFn: async () => {
+      const { SprayWall } = await import("@/api/entities");
+      return SprayWall.get(sprayWallId);
+    },
     enabled: !!sprayWallId,
   });
 
   // Load boulders scoped to wall for warning badge and links
   const { data: boulders = [] } = useQuery({
     queryKey: ['boulders', sprayWallId],
-    queryFn: () => Boulder.filter({ spray_wall_id: sprayWallId }),
+    queryFn: async () => {
+      const { Boulder } = await import("@/api/entities");
+      return Boulder.filter({ spray_wall_id: sprayWallId });
+    },
     enabled: !!sprayWallId,
   });
 
   // Load conti boucles scoped to wall for warning badge and links
   const { data: boucles = [] } = useQuery({
     queryKey: ['contiBoucles', sprayWallId],
-    queryFn: () => ContiBoucle.filter({ spray_wall_id: sprayWallId }),
+    queryFn: async () => {
+      const { ContiBoucle } = await import("@/api/entities");
+      return ContiBoucle.filter({ spray_wall_id: sprayWallId });
+    },
     enabled: !!sprayWallId,
   });
 
@@ -52,7 +62,7 @@ export default function SprayWallDashboard() {
   const hasReplacedHolds = [...boulders, ...boucles].some(item => item.prise_remplacee);
 
   const isAdmin = user?.is_global_admin;
-  const isSubAdmin = user?.email === sprayWall?.sous_admin_email;
+  const isSubAdmin = user?.username === sprayWall?.sous_admin_username;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 via-violet-500 to-purple-600 p-4">

@@ -22,4 +22,16 @@ export default defineConfig({
       },
     },
   },
-}) 
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom'],
+          lucide: ['lucide-react'],
+          tanstack: ['@tanstack/react-query'],
+          sonner: ['sonner'],
+        },
+      },
+    },
+  },
+})

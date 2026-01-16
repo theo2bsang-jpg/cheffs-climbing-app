@@ -1,12 +1,9 @@
-import dotenv from 'dotenv';
-dotenv.config();
 /** Express API for auth plus climbing entities with CSRF and rate limits. */
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import fs from 'fs';
 import path from 'path';
-import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import helmet from 'helmet';
@@ -25,6 +22,7 @@ import { getUserByUsername, createUser, updateUserByUsername, deleteUserByUserna
   , createRefreshToken, deleteRefreshTokensByUserId, getUserByRefreshTokenHash, deleteRefreshTokenById, listRefreshTokensForUser, getRefreshTokenById
 } from './db.js';
 
+import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();

@@ -258,50 +258,57 @@ export default function HoldSelector({
                 {selectedHolds.length === 0 ? (
                   <p className="text-gray-500 text-sm italic">Aucune prise sélectionnée</p>
                 ) : (
-                  selectedHolds.map((hold, index) => (
-                    <Draggable key={hold.hold_id} draggableId={String(hold.hold_id)} index={index}>
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          role="listitem"
-                          className={`flex items-center justify-between bg-slate-50 p-3 rounded cursor-grab active:cursor-grabbing ${
-                            snapshot.isDragging ? 'shadow-lg ring-2 ring-violet-500' : ''
-                          }`}
-                        >
-                          <div className="flex items-center gap-3 flex-1">
-                            <GripVertical className="w-5 h-5 text-gray-400" />
-                            {showOrder && (
-                              <Badge variant="outline" className="w-8 h-8 flex items-center justify-center">
-                                {hold.ordre}
-                              </Badge>
-                            )}
-                            <span className="text-sm font-medium flex-1">{getHoldDisplayName(hold.hold_id, hold.hold_nom)}</span>
-                            <Select value={hold.type} onValueChange={(newType) => changeHoldType(hold.hold_id, newType)}>
-                              <SelectTrigger className="w-32" aria-label="Type de prise">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="depart">🔴 Départ/Fin</SelectItem>
-                                <SelectItem value="main">🟢 Main</SelectItem>
-                                <SelectItem value="pied">🟡 Pied</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label={`Retirer ${getHoldDisplayName(hold.hold_id, hold.hold_nom)}`}
-                            onClick={() => removeHold(hold.hold_id)}
-                            className="text-red-600 hover:bg-red-50 ml-2"
+                  selectedHolds.map((hold, index) => {
+                    // Check if the hold is deleted (not present in availableHolds)
+                    const isDeleted = !availableHolds.find(h => h.id === hold.hold_id);
+                    return (
+                      <Draggable key={hold.hold_id} draggableId={String(hold.hold_id)} index={index}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            role="listitem"
+                            className={`flex items-center justify-between bg-slate-50 p-3 rounded cursor-grab active:cursor-grabbing ${
+                              snapshot.isDragging ? 'shadow-lg ring-2 ring-violet-500' : ''
+                            } ${isDeleted ? 'opacity-60 line-through bg-red-100' : ''}`}
                           >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      )}
-                    </Draggable>
-                  ))
+                            <div className="flex items-center gap-3 flex-1">
+                              <GripVertical className="w-5 h-5 text-gray-400" />
+                              {showOrder && (
+                                <Badge variant="outline" className="w-8 h-8 flex items-center justify-center">
+                                  {hold.ordre}
+                                </Badge>
+                              )}
+                              <span className={`text-sm font-medium flex-1 ${isDeleted ? 'text-red-500' : ''}`}>{getHoldDisplayName(hold.hold_id, hold.hold_nom)}</span>
+                              {isDeleted && (
+                                <span className="ml-2 text-xs text-red-500 font-semibold">(supprimée)</span>
+                              )}
+                              <Select value={hold.type} onValueChange={(newType) => changeHoldType(hold.hold_id, newType)}>
+                                <SelectTrigger className="w-32" aria-label="Type de prise">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="depart">🔴 Départ/Fin</SelectItem>
+                                  <SelectItem value="main">🟢 Main</SelectItem>
+                                  <SelectItem value="pied">🟡 Pied</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-label={`Retirer ${getHoldDisplayName(hold.hold_id, hold.hold_nom)}`}
+                              onClick={() => removeHold(hold.hold_id)}
+                              className="text-red-600 hover:bg-red-500/30 ml-2"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </Draggable>
+                    );
+                  })
                 )}
                 {provided.placeholder}
               </div>

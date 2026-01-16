@@ -1,5 +1,5 @@
 import React from 'react';
-import { BelleOuverture } from "@/api/entities";
+// import { BelleOuverture } from "@/api/entities";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -19,6 +19,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
+import { User as UserEntity } from "@/api/entities";
 
 /** List belles ouvertures for a level within a spray wall. */
 export default function BelleOuvertureList() {
@@ -28,7 +29,10 @@ export default function BelleOuvertureList() {
 
   const { data: bellesOuvertures = [] } = useQuery({
     queryKey: ['bellesOuvertures'],
-    queryFn: () => BelleOuverture.list(),
+    queryFn: async () => {
+      const { BelleOuverture } = await import("@/api/entities");
+      return BelleOuverture.list();
+    },
   });
 
   const filtered = bellesOuvertures.filter((b) => {

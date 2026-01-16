@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { User, SprayWall, Boulder, ContiBoucle } from "@/api/entities";
+// import { User, SprayWall, Boulder, ContiBoucle } from "@/api/entities";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -18,6 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { User } from "@/api/entities";
 
 /** Select and manage spray walls, including default selection and deletion. */
 export default function SprayWallSelect() {
@@ -31,9 +32,11 @@ export default function SprayWallSelect() {
   useEffect(() => {
     const loadUser = async () => {
       try {
+        const { User } = await import("@/api/entities");
         const currentUser = await User.me();
         setUser(currentUser);
       } catch (error) {
+        const { User } = await import("@/api/entities");
         User.redirectToLogin();
       }
     };
@@ -43,19 +46,28 @@ export default function SprayWallSelect() {
   // Load all walls for selection cards
   const { data: sprayWalls = [], isLoading } = useQuery({
     queryKey: ['sprayWalls'],
-    queryFn: () => SprayWall.list(),
+    queryFn: async () => {
+      const { SprayWall } = await import("@/api/entities");
+      return SprayWall.list();
+    },
   });
 
   // Load boulders for replaced holds warnings
   const { data: allBoulders = [] } = useQuery({
     queryKey: ['allBoulders'],
-    queryFn: () => Boulder.list(),
+    queryFn: async () => {
+      const { Boulder } = await import("@/api/entities");
+      return Boulder.list();
+    },
   });
 
   // Load boucles for replaced holds warnings
   const { data: allBoucles = [] } = useQuery({
     queryKey: ['allContiBoucles'],
-    queryFn: () => ContiBoucle.list(),
+    queryFn: async () => {
+      const { ContiBoucle } = await import("@/api/entities");
+      return ContiBoucle.list();
+    },
   });
 
   const hasReplacedHolds = (sprayWallId) => {
@@ -66,6 +78,7 @@ export default function SprayWallSelect() {
   // Set selected spray wall as current user's default
   const updateDefaultMutation = useMutation({
     mutationFn: async (sprayWallId) => {
+      const { User } = await import("@/api/entities");
       await User.updateMe({ spray_wall_par_defaut: sprayWallId });
     },
     onSuccess: (_, sprayWallId) => {
@@ -82,7 +95,10 @@ export default function SprayWallSelect() {
 
   // Delete a spray wall (admin-only)
   const deleteMutation = useMutation({
-    mutationFn: async (id) => SprayWall.delete(id),
+    mutationFn: async (id) => {
+      const { SprayWall } = await import("@/api/entities");
+      return SprayWall.delete(id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sprayWalls'] });
       toast.success('Lieu supprimé');
@@ -105,7 +121,7 @@ export default function SprayWallSelect() {
   
 
   const canManage = (wall) => {
-    return user?.is_global_admin || user?.email === wall.sous_admin_email;
+    return user?.is_global_admin || user?.username === wall.sous_admin_username;
   };
 
   const isAdmin = user?.is_global_admin;
@@ -165,7 +181,7 @@ export default function SprayWallSelect() {
           <div className="space-y-4">
             {sprayWalls.map((wall) => {
               const isDefault = user?.spray_wall_par_defaut === wall.id;
-              const isSubAdmin = user?.email === wall.sous_admin_email;
+              const isSubAdmin = user?.username === wall.sous_admin_username;
               
               return (
                 <Card 

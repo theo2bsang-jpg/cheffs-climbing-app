@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SprayWall, Hold, ContiBoucle, User } from "@/api/entities";
+// import { SprayWall, Hold, ContiBoucle, User } from "@/api/entities";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import HoldSelector from '../components/spraywall/HoldSelector';
 import BoulderPreview from '../components/spraywall/BoulderPreview';
+import { User } from "@/api/entities";
 
 const niveaux = ["4a", "4b", "4c", "5a", "5b", "5c", "6a", "6a+", "6b", "6b+", "6c", "6c+", "7a", "7a+", "7b", "7b+", "7c", "7c+", "8a", "8a+", "8b", "8b+", "8c", "8c+", "9a", "9a+", "9b", "9b+", "9c"];
 
@@ -71,7 +72,10 @@ export default function ContiBoucleCreate() {
   // Load holds for selector
   const { data: holds = [] } = useQuery({
     queryKey: ['holds', sprayWallId],
-    queryFn: () => Hold.filter({ spray_wall_id: sprayWallId }),
+    queryFn: async () => {
+      const { Hold } = await import("@/api/entities");
+      return Hold.filter({ spray_wall_id: sprayWallId });
+    },
     enabled: !!sprayWallId,
     staleTime: 5 * 60 * 1000,
   });
@@ -79,6 +83,7 @@ export default function ContiBoucleCreate() {
   // Persist conti boucle and redirect
   const createMutation = useMutation({
     mutationFn: async () => {
+      const { ContiBoucle } = await import("@/api/entities");
       return await ContiBoucle.create({
         nom,
         ouvreur,
@@ -94,10 +99,12 @@ export default function ContiBoucleCreate() {
       queryClient.invalidateQueries({ queryKey: ['contiBoucles', sprayWallId] });
       toast.success("Boucle de conti créée");
       navigate(createPageUrl("ContiBoucleView") + `?id=${boucle.id}`);
-    },    onError: (error) => {
+    },
+    onError: (error) => {
       toast.error("Erreur lors de la création de la boucle");
       console.error("ContiBoucle creation error:", error);
-    }  });
+    }
+  });
 
   const handleStepOne = () => {
     if (!nom || !ouvreur) {

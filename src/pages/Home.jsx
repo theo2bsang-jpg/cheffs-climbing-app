@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { User, SprayWall } from "@/api/entities";
+// import { User, SprayWall } from "@/api/entities";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Mountain, TrendingUp, Settings, LogOut, MapPin, Plus } from "lucide-react";
+import { User } from "@/api/entities";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
@@ -17,6 +18,7 @@ export default function Home() {
   useEffect(() => {
     const loadUser = async () => {
       try {
+        const { User } = await import("@/api/entities");
         const currentUser = await User.me();
         if (!currentUser.spray_wall_par_defaut) {
           navigate(createPageUrl("SprayWallSelect"));
@@ -24,6 +26,7 @@ export default function Home() {
         }
         setUser(currentUser);
       } catch (error) {
+        const { User } = await import("@/api/entities");
         User.redirectToLogin();
       } finally {
         setLoading(false);
@@ -35,7 +38,10 @@ export default function Home() {
   // Fetch selected spray wall once user default is known
   const { data: sprayWall } = useQuery({
     queryKey: ['sprayWall', user?.spray_wall_par_defaut],
-    queryFn: () => SprayWall.get(user.spray_wall_par_defaut),
+    queryFn: async () => {
+      const { SprayWall } = await import("@/api/entities");
+      return SprayWall.get(user.spray_wall_par_defaut);
+    },
     enabled: !!user?.spray_wall_par_defaut,
   });
 

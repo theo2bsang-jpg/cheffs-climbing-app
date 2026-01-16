@@ -1,3 +1,111 @@
+/** Force-set password (admin flows) by username while preserving user identity. */
+export async function setPasswordByUsername(username, newPassword) {
+  await ensureUsersDbSeeded();
+  const db = readDb();
+  if (!db?.users) throw new Error("DB not initialized");
+
+  const normalizedUsername = String(username).trim();
+  const index = db.users.findIndex((u) => u.username === normalizedUsername);
+  if (index === -1) throw new Error("User not found");
+
+  const user = db.users[index];
+  const saltBytes = crypto.getRandomValues(new Uint8Array(16));
+  const saltBase64 = bytesToBase64(saltBytes);
+  const passwordHash = await hashPassword({ password: newPassword, saltBase64 });
+
+  const updated = {
+    ...user,
+    password_salt: saltBase64,
+    password_hash: passwordHash,
+    updated_at: Date.now(),
+  };
+
+  db.users = [...db.users.slice(0, index), updated, ...db.users.slice(index + 1)];
+  writeDb(db);
+  return sanitizeUser(updated);
+}
+/** Verify current password before rotating salt/hash, by username. */
+export async function changePasswordByUsername(username, currentPassword, newPassword) {
+  await ensureUsersDbSeeded();
+  const db = readDb();
+  if (!db?.users) throw new Error("DB not initialized");
+
+  const normalizedUsername = String(username).trim();
+  const index = db.users.findIndex((u) => u.username === normalizedUsername);
+  if (index === -1) throw new Error("User not found");
+
+  const user = db.users[index];
+  const ok = await verifyUserPassword({ email: user.email, password: currentPassword });
+  if (!ok) throw new Error("Current password invalid");
+
+  const saltBytes = crypto.getRandomValues(new Uint8Array(16));
+  const saltBase64 = bytesToBase64(saltBytes);
+  const passwordHash = await hashPassword({ password: newPassword, saltBase64 });
+
+  const updated = {
+    ...user,
+    password_salt: saltBase64,
+    password_hash: passwordHash,
+    updated_at: Date.now(),
+  };
+
+  db.users = [...db.users.slice(0, index), updated, ...db.users.slice(index + 1)];
+  writeDb(db);
+  return sanitizeUser(updated);
+}
+/** Remove user record by username and return sanitized copy. */
+export async function deleteUserByUsername(username) {
+  await ensureUsersDbSeeded();
+  const db = readDb();
+  if (!db?.users) throw new Error("DB not initialized");
+
+  const normalizedUsername = String(username).trim();
+  const index = db.users.findIndex((u) => u.username === normalizedUsername);
+  if (index === -1) throw new Error("User not found");
+
+  const removed = db.users[index];
+  db.users = [...db.users.slice(0, index), ...db.users.slice(index + 1)];
+  writeDb(db);
+  return sanitizeUser(removed);
+}
+/** Case-sensitive lookup by username. */
+export async function findUserByUsername(username) {
+  await ensureUsersDbSeeded();
+  const db = readDb();
+  const user = (db?.users ?? []).find(
+    (u) => u.username === String(username)
+  );
+  return user ?? null;
+}
+/** Merge patch onto user by username; non-admins cannot escalate privileges. */
+export async function updateUserByUsername(username, patch) {
+  await ensureUsersDbSeeded();
+  const db = readDb();
+  if (!db?.users) throw new Error("DB not initialized");
+
+  const normalizedUsername = String(username).trim();
+  const index = db.users.findIndex((u) => u.username === normalizedUsername);
+  if (index === -1) throw new Error("User not found");
+
+  // Prevent non-admins from changing the `is_global_admin` flag.
+  const currentRaw = localStorage.getItem('currentUser');
+  const currentUser = currentRaw ? JSON.parse(currentRaw) : null;
+  const safePatch = { ...patch };
+  if ('is_global_admin' in safePatch && !currentUser?.is_global_admin) {
+    delete safePatch.is_global_admin;
+  }
+
+  const updated = {
+    ...db.users[index],
+    ...safePatch,
+    username: db.users[index].username, // username is the identifier; keep stable
+    updated_at: Date.now(),
+  };
+
+  db.users = [...db.users.slice(0, index), updated, ...db.users.slice(index + 1)];
+  writeDb(db);
+  return sanitizeUser(updated);
+}
 /** Offline user auth store with salted SHA-256 hashes in localStorage; used as fallback. */
 const STORAGE_KEY = "cheffs.users.db.v1";
 

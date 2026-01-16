@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Boulder, ContiBoucle } from "@/api/entities";
+// import { Boulder, ContiBoucle } from "@/api/entities";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { User } from "@/api/entities";
 
 const niveaux = ["4a", "4b", "4c", "5a", "5b", "5c", "6a", "6a+", "6b", "6b+", "6c", "6c+", "7a", "7a+", "7b", "7b+", "7c", "7c+", "8a", "8a+", "8b", "8b+", "8c", "8c+", "9a", "9a+", "9b", "9b+", "9c"];
 
@@ -32,14 +33,20 @@ export default function BoulderRandom() {
   // Scope to selected spray wall
   const { data: boulders = [] } = useQuery({
     queryKey: ['boulders', sprayWallId],
-    queryFn: () => Boulder.filter({ spray_wall_id: sprayWallId }),
+    queryFn: async () => {
+      const { Boulder } = await import("@/api/entities");
+      return Boulder.filter({ spray_wall_id: sprayWallId });
+    },
     enabled: !!sprayWallId,
   });
 
   // Scope to selected spray wall
   const { data: boucles = [] } = useQuery({
     queryKey: ['contiBoucles', sprayWallId],
-    queryFn: () => ContiBoucle.filter({ spray_wall_id: sprayWallId }),
+    queryFn: async () => {
+      const { ContiBoucle } = await import("@/api/entities");
+      return ContiBoucle.filter({ spray_wall_id: sprayWallId });
+    },
     enabled: !!sprayWallId,
   });
 

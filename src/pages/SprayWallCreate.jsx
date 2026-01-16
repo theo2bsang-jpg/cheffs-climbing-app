@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, SprayWall, Hold } from "@/api/entities";
+// import { User, SprayWall, Hold } from "@/api/entities";
 import { UploadFile } from "@/api/integrations";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import PhotoAnnotator from '../components/spraywall/PhotoAnnotator';
+import { User } from "@/api/entities";
 
 /** Admin-only wizard to create a spray wall with photo + holds. */
 export default function SprayWallCreate() {
@@ -28,6 +29,7 @@ export default function SprayWallCreate() {
   useEffect(() => {
     const loadUser = async () => {
       try {
+        const { User } = await import("@/api/entities");
         const currentUser = await User.me();
         if (!currentUser.is_global_admin) {
           toast.error("Accès non autorisé");
@@ -36,6 +38,7 @@ export default function SprayWallCreate() {
         }
         setUser(currentUser);
       } catch (error) {
+        const { User } = await import("@/api/entities");
         User.redirectToLogin();
       }
     };
@@ -63,6 +66,7 @@ export default function SprayWallCreate() {
   // Persist wall then bulk-create holds; set as user's default
   const createMutation = useMutation({
     mutationFn: async () => {
+      const { SprayWall, Hold, User } = await import("@/api/entities");
       const sprayWall = await SprayWall.create({
         nom,
         lieu,
@@ -82,6 +86,7 @@ export default function SprayWallCreate() {
       return sprayWall;
     },
     onSuccess: async (sprayWall) => {
+      const { User } = await import("@/api/entities");
       queryClient.invalidateQueries(['sprayWalls']);
       await User.updateMe({ spray_wall_par_defaut: sprayWall.id });
       toast.success("Lieu créé avec succès");

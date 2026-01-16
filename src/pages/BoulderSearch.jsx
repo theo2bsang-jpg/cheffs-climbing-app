@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Boulder, ContiBoucle } from "@/api/entities";
+// import { Boulder, ContiBoucle } from "@/api/entities";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import LevelBadge from '../components/shared/LevelBadge';
+// import { User } from "@/api/entities"; // Removed duplicate import
 
 /** Search blocks and conti loops within a spray wall. */
 export default function BoulderSearch() {
@@ -18,13 +19,19 @@ export default function BoulderSearch() {
 
   const { data: boulders = [] } = useQuery({
     queryKey: ['boulders', sprayWallId],
-    queryFn: () => Boulder.filter({ spray_wall_id: sprayWallId }),
+    queryFn: async () => {
+      const { Boulder } = await import("@/api/entities");
+      return Boulder.filter({ spray_wall_id: sprayWallId });
+    },
     enabled: !!sprayWallId,
   });
 
   const { data: boucles = [] } = useQuery({
     queryKey: ['contiBoucles', sprayWallId],
-    queryFn: () => ContiBoucle.filter({ spray_wall_id: sprayWallId }),
+    queryFn: async () => {
+      const { ContiBoucle } = await import("@/api/entities");
+      return ContiBoucle.filter({ spray_wall_id: sprayWallId });
+    },
     enabled: !!sprayWallId,
   });
 

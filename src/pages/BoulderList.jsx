@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Boulder, ContiBoucle, Hold, User } from "@/api/entities";
+// import { Boulder, ContiBoucle, Hold, User } from "@/api/entities";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogDescription,
 } from "@/components/ui/alert-dialog";
+import { User } from "@/api/entities";
 
 /** Show boulders/boucles for a wall at a given grade with admin delete actions. */
 export default function BoulderList() {
@@ -30,21 +31,30 @@ export default function BoulderList() {
   // Query boulders scoped by wall and grade
   const { data: boulders = [] } = useQuery({
     queryKey: ['boulders', sprayWallId, niveau],
-    queryFn: () => Boulder.filter({ spray_wall_id: sprayWallId, niveau }),
+    queryFn: async () => {
+      const { Boulder } = await import("@/api/entities");
+      return Boulder.filter({ spray_wall_id: sprayWallId, niveau });
+    },
     enabled: !!sprayWallId && !!niveau && (!type || type === 'boulder'),
   });
 
   // Query conti boucles scoped by wall and grade
   const { data: boucles = [] } = useQuery({
     queryKey: ['contiBoucles', sprayWallId, niveau],
-    queryFn: () => ContiBoucle.filter({ spray_wall_id: sprayWallId, niveau }),
+    queryFn: async () => {
+      const { ContiBoucle } = await import("@/api/entities");
+      return ContiBoucle.filter({ spray_wall_id: sprayWallId, niveau });
+    },
     enabled: !!sprayWallId && !!niveau && (!type || type === 'boucle'),
   });
 
   // Load holds to flag missing/replaced holds
   const { data: allHolds = [] } = useQuery({
     queryKey: ['holds', sprayWallId],
-    queryFn: () => Hold.filter({ spray_wall_id: sprayWallId }),
+    queryFn: async () => {
+      const { Hold } = await import("@/api/entities");
+      return Hold.filter({ spray_wall_id: sprayWallId });
+    },
     enabled: !!sprayWallId,
   });
 
@@ -56,6 +66,7 @@ export default function BoulderList() {
   useEffect(() => {
     const loadUser = async () => {
       try {
+        const { User } = await import("@/api/entities");
         const current = await User.me();
         setUser(current);
       } catch (e) {
@@ -68,6 +79,7 @@ export default function BoulderList() {
   // Admin-only boulder deletion
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
+      const { Boulder } = await import("@/api/entities");
       await Boulder.delete(id);
     },
     onSuccess: () => {
@@ -84,6 +96,7 @@ export default function BoulderList() {
   // Admin-only conti boucle deletion
   const deleteBoucleMutation = useMutation({
     mutationFn: async (id) => {
+      const { ContiBoucle } = await import("@/api/entities");
       await ContiBoucle.delete(id);
     },
     onSuccess: () => {

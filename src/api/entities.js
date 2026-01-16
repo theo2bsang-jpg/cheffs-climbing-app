@@ -6,13 +6,13 @@
 import {
   createUser,
   ensureUsersDbSeeded,
-  findUserByEmail,
-  updateUserByEmail,
+  findUserByUsername,
+  updateUserByUsername,
   verifyUserPassword,
-  changePasswordByEmail,
-  setPasswordByEmail,
+  changePasswordByUsername,
+  setPasswordByUsername,
   listUsers,
-  deleteUserByEmail,
+  deleteUserByUsername,
 } from "./userDb";
 import {
   createHold,
@@ -570,8 +570,7 @@ export const User = {
       const res = await callServer('/api/auth/me', { method: 'GET' });
       return res.user ?? null;
     } catch {
-      const stored = localStorage.getItem('currentUser');
-      if (stored) return JSON.parse(stored);
+      // Do not fall back to localStorage for session state
       return null;
     }
   },
@@ -584,36 +583,36 @@ export const User = {
     const user = await User.me();
     if (!user) throw new Error('Not logged in');
     try {
-      const res = await callServer(`/api/users/${encodeURIComponent(user.email)}`, { method: 'PATCH', body: JSON.stringify(data) });
+      const res = await callServer(`/api/users/${encodeURIComponent(user.username)}`, { method: 'PATCH', body: JSON.stringify(data) });
       const updated = res.user;
       localStorage.setItem('currentUser', JSON.stringify(updated));
       return updated;
     } catch {
-      const updated = await updateUserByEmail(user.email, data);
+      const updated = await updateUserByUsername(user.username, data);
       localStorage.setItem('currentUser', JSON.stringify(updated));
       return updated;
     }
   },
   /** Logout locally and attempt server logout. */
-  logout: () => {
-    try { callServer('/api/auth/logout', { method: 'POST' }); } catch {}
+  logout: async () => {
+    try {
+      await callServer('/api/auth/logout', { method: 'POST' });
+    } catch {}
     localStorage.removeItem('currentUser');
-      window.location.href = '/Login';
+    window.location.href = '/Login';
   },
   /** Login with server-first auth and local fallback. */
-  login: async (email, password) => {
+  login: async (username, password) => {
     try {
-      const res = await callServer('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+      const res = await callServer('/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) });
       const user = res.user;
-      // server sets HttpOnly cookies for auth; store user locally for UI
       localStorage.setItem('currentUser', JSON.stringify(user));
       return user;
     } catch (err) {
-      // fallback to local DB
       await ensureUsersDbSeeded();
-      const ok = await verifyUserPassword({ email, password });
+      const ok = await verifyUserPassword({ username, password });
       if (!ok) throw new Error('Invalid credentials');
-      const user = await findUserByEmail(email);
+      const user = await findUserByUsername(username);
       if (!user) throw new Error('Invalid credentials');
       const { password_salt, password_hash, ...safeUser } = user;
       localStorage.setItem('currentUser', JSON.stringify(safeUser));
@@ -621,15 +620,14 @@ export const User = {
     }
   },
   /** Register a new user. */
-  register: async ({ email, password, full_name }) => {
+  register: async ({ username, password, full_name }) => {
     try {
-      const res = await callServer('/api/auth/register', { method: 'POST', body: JSON.stringify({ email, password, full_name }) });
+      const res = await callServer('/api/auth/register', { method: 'POST', body: JSON.stringify({ username, password, full_name }) });
       const user = res.user;
-      // server sets HttpOnly cookies for auth; store user locally for UI
       localStorage.setItem('currentUser', JSON.stringify(user));
       return user;
     } catch {
-      const user = await createUser({ email, password, full_name });
+      const user = await createUser({ username, password, full_name });
       localStorage.setItem('currentUser', JSON.stringify(user));
       return user;
     }
@@ -644,25 +642,25 @@ export const User = {
     try { const res = await callServer('/api/users', { method: 'POST', body: JSON.stringify(data) }); return res.user; } catch { return createUser(data); }
   },
   /** Update user by email (admin). */
-  updateByEmail: async (email, patch) => {
-    try { const res = await callServer(`/api/users/${encodeURIComponent(email)}`, { method: 'PATCH', body: JSON.stringify(patch) }); return res.user; } catch { return updateUserByEmail(email, patch); }
+  updateByUsername: async (username, patch) => {
+    try { const res = await callServer(`/api/users/${encodeURIComponent(username)}`, { method: 'PATCH', body: JSON.stringify(patch) }); return res.user; } catch { return updateUserByUsername(username, patch); }
   },
-  /** Delete user by email (admin). */
-  deleteByEmail: async (email) => {
-    try { const res = await callServer(`/api/users/${encodeURIComponent(email)}`, { method: 'DELETE' }); return res.user; } catch { return deleteUserByEmail(email); }
+  /** Delete user by username (admin). */
+  deleteByUsername: async (username) => {
+    try { const res = await callServer(`/api/users/${encodeURIComponent(username)}`, { method: 'DELETE' }); return res.user; } catch { return deleteUserByUsername(username); }
   },
-  /** Find user by email. */
-  findByEmail: async (email) => {
-    try { const users = await User.list(); return users.find(u => String(u.email).toLowerCase() === String(email).toLowerCase()) ?? null; } catch { return findUserByEmail(email); }
+  /** Find user by username. */
+  findByUsername: async (username) => {
+    try { const users = await User.list(); return users.find(u => String(u.username).toLowerCase() === String(username).toLowerCase()) ?? null; } catch { return findUserByUsername(username); }
   },
   /** Change password for current user (local fallback only). */
   changePassword: async (currentPassword, newPassword) => {
     const stored = localStorage.getItem('currentUser');
     if (!stored) throw new Error('Not logged in');
     const me = JSON.parse(stored);
-    if (!me?.email) throw new Error('Not logged in');
-    return changePasswordByEmail(me.email, currentPassword, newPassword);
+    if (!me?.username) throw new Error('Not logged in');
+    return changePasswordByUsername(me.username, currentPassword, newPassword);
   },
-  /** Force-set password by email (admin offline helper). */
-  setPasswordByEmail: async (email, newPassword) => setPasswordByEmail(email, newPassword),
+  /** Force-set password by username (admin offline helper). */
+  setPasswordByUsername: async (username, newPassword) => setPasswordByUsername(username, newPassword),
 };

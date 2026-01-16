@@ -10,7 +10,7 @@ import crypto from 'crypto';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { signToken, verifyToken, authMiddleware, requireAdmin } from './auth.js';
-import { getUserByEmail, createUser, updateUserByEmail, deleteUserByEmail, listUsers,
+import { getUserByUsername, createUser, updateUserByUsername, deleteUserByUsername, listUsers,
   listBoulders, createBoulder, updateBoulder, deleteBoulder,
   listContiBoucles, createContiBoucle, updateContiBoucle, deleteContiBoucle,
   listAscensions, createAscension, updateAscension, deleteAscension,
@@ -102,15 +102,15 @@ function sanitizeUser(user) {
 
 // auth routes
 app.post('/api/auth/register', async (req, res) => {
-  const { email, password, full_name } = req.body;
-  if (!email || !password) return res.status(400).json({ error: 'email and password required' });
-  const normalized = String(email).trim().toLowerCase();
-  if (getUserByEmail(normalized)) return res.status(400).json({ error: 'Email already exists' });
+  const { username, password, full_name } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'username and password required' });
+  const normalized = String(username).trim().toLowerCase();
+  if (getUserByUsername(normalized)) return res.status(400).json({ error: 'Username already exists' });
   const salt = await bcrypt.genSalt(10);
   const hash = await bcrypt.hash(password, salt);
-  const user = createUser({ email: normalized, full_name: full_name || normalized, password_hash: hash, is_global_admin: 0 });
+  const user = createUser({ username: normalized, full_name: full_name || normalized, password_hash: hash, is_global_admin: 0 });
   // issue short-lived access token and a rotating refresh token stored as HttpOnly cookies
-  const accessToken = signToken({ id: user.id, email: user.email, is_global_admin: user.is_global_admin }, '15m');
+  const accessToken = signToken({ id: user.id, username: user.username, is_global_admin: user.is_global_admin }, '15m');
   const refreshRaw = crypto.randomBytes(64).toString('hex');
   const refreshHash = bcrypt.hashSync(refreshRaw, bcrypt.genSaltSync(10));
   const refreshExpiry = Date.now() + (1000 * 60 * 60 * 24 * 14); // 14 days
@@ -134,9 +134,9 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 app.post('/api/auth/login', authLimiter, async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: 'email and password required' });
-  const user = getUserByEmail(String(email).trim().toLowerCase());
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'username and password required' });
+  const user = getUserByUsername(String(username).trim().toLowerCase());
   if (!user) return res.status(401).json({ error: 'Invalid credentials' });
   let ok = false;
   try {
@@ -155,7 +155,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
       if (legacyHash === user.password_hash) {
         // migrate to bcrypt
         const newHash = bcrypt.hashSync(password, bcrypt.genSaltSync(10));
-        updateUserByEmail(user.email, { password_hash: newHash, password_salt: null });
+        updateUserByUsername(user.username, { password_hash: newHash, password_salt: null });
         ok = true;
       }
     } catch (e) {
@@ -165,7 +165,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 
   if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
   // issue short-lived access token and a rotating refresh token stored as HttpOnly cookies
-  const accessToken = signToken({ id: user.id, email: user.email, is_global_admin: user.is_global_admin }, '15m');
+  const accessToken = signToken({ id: user.id, username: user.username, is_global_admin: user.is_global_admin }, '15m');
   const refreshRaw = crypto.randomBytes(64).toString('hex');
   const refreshHash = bcrypt.hashSync(refreshRaw, bcrypt.genSaltSync(10));
   const refreshExpiry = Date.now() + (1000 * 60 * 60 * 24 * 14); // 14 days
@@ -228,7 +228,7 @@ app.post('/api/auth/refresh', (req, res) => {
 });
 
 app.get('/api/auth/me', authMiddleware, (req, res) => {
-  const user = getUserByEmail(req.user.email);
+  const user = getUserByUsername(req.user.username);
   if (!user) return res.status(404).json({ error: 'Not found' });
   res.json({ user: sanitizeUser(user) });
 });
@@ -256,53 +256,50 @@ app.delete('/api/auth/sessions/:id', authMiddleware, (req, res) => {
 // Recovery endpoint: Reset admin password with recovery token
 // Usage: POST /api/auth/recovery with { recovery_token, new_password }
 app.post('/api/auth/recovery', (req, res) => {
-  const { recovery_token, new_password, admin_email } = req.body;
-  
+  const { recovery_token, new_password, admin_username } = req.body;
+  // Require admin_username explicitly
+  if (!admin_username || typeof admin_username !== 'string' || !admin_username.trim()) {
+    return res.status(400).json({ error: 'admin_username is required' });
+  }
   // Require recovery token from environment
   if (!process.env.RECOVERY_TOKEN) {
     return res.status(503).json({ error: 'Recovery disabled: RECOVERY_TOKEN not configured' });
   }
-  
   // Validate recovery token
   if (!recovery_token || recovery_token !== process.env.RECOVERY_TOKEN) {
     return res.status(401).json({ error: 'Invalid recovery token' });
   }
-  
   // Validate new password
   if (!new_password || new_password.length < 8) {
     return res.status(400).json({ error: 'Password must be at least 8 characters' });
   }
-  
   // Get or create admin user
-  const email = (admin_email || process.env.ADMIN_EMAIL || 'admin@example.com').toLowerCase();
-  let user = getUserByEmail(email);
-  
+  const username = admin_username.toLowerCase();
+  let user = getUserByUsername(username);
   // Hash new password
   const salt = bcrypt.genSaltSync(10);
   const hash = bcrypt.hashSync(new_password, salt);
   const now = Date.now();
-  
   if (!user) {
     // Create new admin
     user = createUser({
-      email,
+      username,
       full_name: 'Admin',
       password_hash: hash,
       password_salt: salt,
       is_global_admin: 1
     });
-    console.log(`Recovery: Created new admin user: ${email}`);
+    console.log(`Recovery: Created new admin user: ${username}`);
   } else {
     // Update existing admin
-    user = updateUserByEmail(email, {
+    user = updateUserByUsername(username, {
       password_hash: hash,
       password_salt: salt,
       is_global_admin: 1
     });
-    console.log(`Recovery: Reset admin password for: ${email}`);
+    console.log(`Recovery: Reset admin password for: ${username}`);
   }
-  
-  res.json({ success: true, message: `Admin password reset for ${email}` });
+  res.json({ success: true, message: `Admin password reset for ${username}` });
 });
 
 // Revoke a session by id (current user or admin)
@@ -336,33 +333,33 @@ app.get('/api/users', authMiddleware, requireAdmin, (req, res) => {
 });
 
 app.post('/api/users', authMiddleware, requireAdmin, (req, res) => {
-  const { email, full_name, password, is_global_admin } = req.body || {};
-  if (!email || !password) return res.status(400).json({ error: 'email and password required' });
+  const { username, full_name, password, is_global_admin } = req.body || {};
+  if (!username || !password) return res.status(400).json({ error: 'username and password required' });
   // createUser expects password_hash; hash it here
   const salt = bcrypt.genSaltSync(10);
   const hash = bcrypt.hashSync(password, salt);
-  const user = createUser({ email: String(email).trim().toLowerCase(), full_name: full_name || email, password_hash: hash, is_global_admin: is_global_admin ? 1 : 0 });
-  console.log(`[CREATE] User created: ${user.email} (admin: ${user.is_global_admin}) by ${req.user.email}`);
+  const user = createUser({ username: String(username).trim().toLowerCase(), full_name: full_name || username, password_hash: hash, is_global_admin: is_global_admin ? 1 : 0 });
+  console.log(`[CREATE] User created: ${user.username} (admin: ${user.is_global_admin}) by ${req.user.username}`);
   res.json({ user: sanitizeUser(user) });
 });
 
-app.patch('/api/users/:email', authMiddleware, (req, res) => {
-  const email = String(req.params.email).trim().toLowerCase();
+app.patch('/api/users/:username', authMiddleware, (req, res) => {
+  const username = String(req.params.username).trim().toLowerCase();
   const patch = req.body || {};
-  const existing = getUserByEmail(email);
+  const existing = getUserByUsername(username);
   if (!existing) return res.status(404).json({ error: 'User not found' });
   // Allow users to update their own profile, or admins to update any profile
-  if (req.user.email !== email && !req.user.is_global_admin) return res.status(403).json({ error: 'Forbidden' });
-  const updated = updateUserByEmail(email, patch);
-  console.log(`[UPDATE] User updated: ${email} by ${req.user.email}`);
+  if (req.user.username !== username && !req.user.is_global_admin) return res.status(403).json({ error: 'Forbidden' });
+  const updated = updateUserByUsername(username, patch);
+  console.log(`[UPDATE] User updated: ${username} by ${req.user.username}`);
   res.json({ user: sanitizeUser(updated) });
 });
 
-app.delete('/api/users/:email', authMiddleware, requireAdmin, (req, res) => {
-  const email = String(req.params.email).trim().toLowerCase();
-  const removed = deleteUserByEmail(email);
+app.delete('/api/users/:username', authMiddleware, requireAdmin, (req, res) => {
+  const username = String(req.params.username).trim().toLowerCase();
+  const removed = deleteUserByUsername(username);
   if (!removed) return res.status(404).json({ error: 'User not found' });
-  console.log(`[DELETE] User deleted: ${email} by ${req.user.email}`);
+  console.log(`[DELETE] User deleted: ${username} by ${req.user.username}`);
   res.json({ user: sanitizeUser(removed) });
 });
 

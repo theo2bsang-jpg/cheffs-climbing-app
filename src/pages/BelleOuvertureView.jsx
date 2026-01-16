@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BelleOuverture, SprayWall, User } from "@/api/entities";
+// import { BelleOuverture, SprayWall, User } from "@/api/entities";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import LevelBadge from '../components/shared/LevelBadge';
+import { User } from "@/api/entities";
 
 /** View details of a belle ouverture and navigate back to its spray wall. */
 export default function BelleOuvertureView() {
@@ -45,7 +46,10 @@ export default function BelleOuvertureView() {
   const [deleteDialog, setDeleteDialog] = useState(false);
 
   const deleteMutation = useMutation({
-    mutationFn: () => BelleOuverture.delete(ouvertureId),
+    mutationFn: async () => {
+      const { BelleOuverture } = await import("@/api/entities");
+      return BelleOuverture.delete(ouvertureId);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bellesOuvertures'] });
       toast.success("Belle ouverture supprimée");
@@ -59,7 +63,10 @@ export default function BelleOuvertureView() {
 
   const { data: ouverture } = useQuery({
     queryKey: ['belleOuverture', ouvertureId],
-    queryFn: () => BelleOuverture.get(ouvertureId),
+    queryFn: async () => {
+      const { BelleOuverture } = await import("@/api/entities");
+      return BelleOuverture.get(ouvertureId);
+    },
     enabled: !!ouvertureId,
     onSuccess: (data) => {
       // Prefer the spray wall from the record; fallback to query param; otherwise go to catalog root
@@ -75,7 +82,10 @@ export default function BelleOuvertureView() {
   // Fetch spray wall for context
   const { data: sprayWall } = useQuery({
     queryKey: ['sprayWall', ouverture?.spray_wall_id],
-    queryFn: () => SprayWall.get(ouverture.spray_wall_id),
+    queryFn: async () => {
+      const { SprayWall } = await import("@/api/entities");
+      return SprayWall.get(ouverture.spray_wall_id);
+    },
     enabled: !!ouverture?.spray_wall_id,
     staleTime: 5 * 60 * 1000,
   });

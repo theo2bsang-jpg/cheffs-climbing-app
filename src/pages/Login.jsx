@@ -22,7 +22,7 @@ import {
 /** Auth form for email/password login with failure dialog. */
 export default function Login() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [loginFailedOpen, setLoginFailedOpen] = useState(false);
@@ -32,13 +32,12 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     try {
-      await User.login(email, password);
+      await User.login(username, password);
       toast.success("Connexion réussie");
       navigate(createPageUrl("Home"));
     } catch (error) {
-      // show in-app notification dialog + toast for visibility
       setLoginFailedOpen(true);
-      toast.error("Email ou mot de passe incorrect");
+      toast.error("Nom d'utilisateur ou mot de passe incorrect");
     } finally {
       setLoading(false);
     }
@@ -58,13 +57,13 @@ export default function Login() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="username">Nom d'utilisateur</Label>
               <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="nom d'utilisateur"
                 required
               />
             </div>
@@ -98,7 +97,7 @@ export default function Login() {
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Échec de la connexion</AlertDialogTitle>
-          <AlertDialogDescription>Vérifiez votre email et mot de passe, puis réessayez.</AlertDialogDescription>
+          <AlertDialogDescription>Vérifiez votre nom d'utilisateur et mot de passe, puis réessayez.</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Annuler</AlertDialogCancel>

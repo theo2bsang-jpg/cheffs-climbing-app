@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { User, SprayWall, Hold, Boulder, ContiBoucle } from "@/api/entities";
+// import { User, SprayWall, Hold, Boulder, ContiBoucle } from "@/api/entities";
 import { UploadFile } from "@/api/integrations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import PhotoAnnotator from '../components/spraywall/PhotoAnnotator';
+import { User } from "@/api/entities";
 
 /** Admin/sub-admin tool to update wall info, photo, and holds. */
 export default function SprayWallEdit() {
@@ -102,14 +103,20 @@ export default function SprayWallEdit() {
 
   const { data: sprayWall } = useQuery({
     queryKey: sprayWallQueryKey,
-    queryFn: () => SprayWall.get(sprayWallId),
+    queryFn: async () => {
+      const { SprayWall } = await import("@/api/entities");
+      return SprayWall.get(sprayWallId);
+    },
     enabled: !!sprayWallId,
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: existingHolds = [] } = useQuery({
     queryKey: holdsQueryKey,
-    queryFn: () => Hold.filter({ spray_wall_id: sprayWallId }),
+    queryFn: async () => {
+      const { Hold } = await import("@/api/entities");
+      return Hold.filter({ spray_wall_id: sprayWallId });
+    },
     enabled: !!sprayWallId,
     staleTime: 5 * 60 * 1000,
   });
@@ -162,12 +169,12 @@ export default function SprayWallEdit() {
   // Save wall + holds; mark dependent routes when holds removed
   const updateMutation = useMutation({
     mutationFn: async ({ redirect } = {}) => {
+      const { SprayWall, Hold } = await import("@/api/entities");
       await SprayWall.update(sprayWallId, {
         nom,
         lieu,
         photo_url: photoUrl
       });
-
 
       // Overwrite or create all imported holds
       const importedIds = holds.map(h => h.id).filter(Boolean);

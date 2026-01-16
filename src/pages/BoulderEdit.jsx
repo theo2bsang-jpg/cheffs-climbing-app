@@ -87,14 +87,19 @@ export default function BoulderEdit() {
     }
   }, [boulder]);
 
-  /** Load user to gate delete permissions. */
+
+  /** Load user and force redirect if not authenticated. */
   useEffect(() => {
     const loadUser = async () => {
       try {
         const currentUser = await User.me();
+        if (!currentUser) {
+          User.redirectToLogin();
+          return;
+        }
         setUser(currentUser);
       } catch (error) {
-        console.error(error);
+        User.redirectToLogin();
       }
     };
     loadUser();
@@ -103,6 +108,7 @@ export default function BoulderEdit() {
   // Save edits and clear replaced flag
   const updateMutation = useMutation({
     mutationFn: async () => {
+      const { Boulder } = await import("@/api/entities");
       return await Boulder.update(boulderId, {
         nom,
         ouvreur,
@@ -167,6 +173,11 @@ export default function BoulderEdit() {
 
   const canDelete = user && (user.is_global_admin || user.email === sprayWall?.sous_admin_email);
 
+
+  // If user is not loaded (null), block rendering (avoid navigation flicker)
+  if (user === null) {
+    return null;
+  }
   if (!boulder || !sprayWall) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -316,7 +327,9 @@ export default function BoulderEdit() {
                   Retour
                 </Button>
                 <Button 
-                  onClick={() => updateMutation.mutate()}
+                  onClick={() => {
+                    updateMutation.mutate();
+                  }}
                   disabled={updateMutation.isLoading}
                   className="flex-1 bg-blue-600 hover:bg-blue-700"
                 >

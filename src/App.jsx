@@ -1,11 +1,34 @@
+
 import './App.css'
 import Pages from "@/pages/index.jsx"
 import { Toaster } from "@/components/ui/toaster"
+import { toast } from "@/components/ui/use-toast"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
-const queryClient = new QueryClient()
+// Global error handler for React Query
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      onError: (error) => {
+        if (error && typeof error.message === 'string' && error.message.match(/401|unauthorized|not logged in|forbidden/i)) {
+          toast({ title: 'Session expirée', description: 'Veuillez vous reconnecter.' });
+          window.location.href = '/Login';
+        }
+      },
+    },
+    mutations: {
+      onError: (error) => {
+        if (error && typeof error.message === 'string' && error.message.match(/401|unauthorized|not logged in|forbidden/i)) {
+          toast({ title: 'Session expirée', description: 'Veuillez vous reconnecter.' });
+          window.location.href = '/Login';
+        }
+      },
+    },
+  },
+});
 
 /** App root: provides React Query client, routing, and toasts. */
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>

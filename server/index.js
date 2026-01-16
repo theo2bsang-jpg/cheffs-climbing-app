@@ -368,21 +368,21 @@ app.delete('/api/users/:username', authMiddleware, requireAdmin, (req, res) => {
 app.get('/api/boulders', (req, res) => res.json({ boulders: listBoulders() }));
 app.post('/api/boulders', authMiddleware, (req, res) => {
   const boulder = createBoulder(req.body);
-  console.log(`[CREATE] Boulder created: ID ${boulder.id}, "${boulder.nom}", niveau ${boulder.niveau} by ${req.user.email}`);
+  console.log(`[CREATE] Boulder created: ID ${boulder.id}, "${boulder.nom}", niveau ${boulder.niveau} by ${req.user.username}`);
   res.json({ boulder });
 });
 app.patch('/api/boulders/:id', authMiddleware, (req, res) => {
   const id = Number(req.params.id);
   const updated = updateBoulder(id, req.body || {});
   if (!updated) return res.status(404).json({ error: 'Not found' });
-  console.log(`[UPDATE] Boulder updated: ID ${id}, "${updated.nom}" by ${req.user.email}`);
+  console.log(`[UPDATE] Boulder updated: ID ${id}, "${updated.nom}" by ${req.user.username}`);
   res.json({ boulder: updated });
 });
 app.delete('/api/boulders/:id', authMiddleware, (req, res) => {
   const id = Number(req.params.id);
   const removed = deleteBoulder(id);
   if (!removed) return res.status(404).json({ error: 'Not found' });
-  console.log(`[DELETE] Boulder deleted: ID ${id} by ${req.user.email}`);
+  console.log(`[DELETE] Boulder deleted: ID ${id} by ${req.user.username}`);
   res.json(removed);
 });
 
@@ -390,14 +390,14 @@ app.delete('/api/boulders/:id', authMiddleware, (req, res) => {
 app.get('/api/contiBoucles', (req, res) => res.json({ contiBoucles: listContiBoucles() }));
 app.post('/api/contiBoucles', authMiddleware, (req, res) => {
   const contiBoucle = createContiBoucle(req.body);
-  console.log(`[CREATE] Conti boucle created: ID ${contiBoucle.id}, "${contiBoucle.nom}" by ${req.user.email}`);
+  console.log(`[CREATE] Conti boucle created: ID ${contiBoucle.id}, "${contiBoucle.nom}" by ${req.user.username}`);
   res.json({ contiBoucle });
 });
 app.patch('/api/contiBoucles/:id', authMiddleware, (req, res) => {
   const id = Number(req.params.id);
   const updated = updateContiBoucle(id, req.body || {});
   if (!updated) return res.status(404).json({ error: 'Not found' });
-  console.log(`[UPDATE] Conti boucle updated: ID ${id}, "${updated.nom}" by ${req.user.email}`);
+  console.log(`[UPDATE] Conti boucle updated: ID ${id}, "${updated.nom}" by ${req.user.username}`);
   res.json({ contiBoucle: updated });
 });
 app.delete('/api/contiBoucles/:id', authMiddleware, (req, res) => {
@@ -405,7 +405,7 @@ app.delete('/api/contiBoucles/:id', authMiddleware, (req, res) => {
   const existing = listContiBoucles().find(b => b.id === id);
   const removed = deleteContiBoucle(id);
   if (!removed) return res.status(404).json({ error: 'Not found' });
-  if (existing) console.log(`[DELETE] Conti boucle deleted: ID ${id}, "${existing.nom}" by ${req.user.email}`);
+  if (existing) console.log(`[DELETE] Conti boucle deleted: ID ${id}, "${existing.nom}" by ${req.user.username}`);
   res.json(removed);
 });
 
@@ -477,21 +477,21 @@ app.delete('/api/voieMax/:id', authMiddleware, (req, res) => {
 app.get('/api/belleOuvertures', (req, res) => res.json({ belleOuvertures: listBelleOuvertures() }));
 app.post('/api/belleOuvertures', authMiddleware, (req, res) => {
   const belle = createBelleOuverture(req.body);
-  console.log(`[CREATE] Belle ouverture created: ID ${belle.id}, "${belle.nom}" by ${req.user.email}`);
+  console.log(`[CREATE] Belle ouverture created: ID ${belle.id}, "${belle.nom}" by ${req.user.username}`);
   res.json({ belle });
 });
 app.patch('/api/belleOuvertures/:id', authMiddleware, (req, res) => {
   const id = Number(req.params.id);
   const updated = updateBelleOuverture(id, req.body || {});
   if (!updated) return res.status(404).json({ error: 'Not found' });
-  console.log(`[UPDATE] Belle ouverture updated: ID ${id}, "${updated.nom}" by ${req.user.email}`);
+  console.log(`[UPDATE] Belle ouverture updated: ID ${id}, "${updated.nom}" by ${req.user.username}`);
   res.json({ belle: updated });
 });
 app.delete('/api/belleOuvertures/:id', authMiddleware, (req, res) => {
   const id = Number(req.params.id);
   const removed = deleteBelleOuverture(id);
   if (!removed) return res.status(404).json({ error: 'Not found' });
-  console.log(`[DELETE] Belle ouverture deleted: ID ${id} by ${req.user.email}`);
+  console.log(`[DELETE] Belle ouverture deleted: ID ${id} by ${req.user.username}`);
   res.json(removed);
 });
 
@@ -499,14 +499,14 @@ app.delete('/api/belleOuvertures/:id', authMiddleware, (req, res) => {
 app.get('/api/sprayWalls', (req, res) => res.json({ sprayWalls: listSprayWalls() }));
 app.post('/api/sprayWalls', authMiddleware, (req, res) => {
   const sprayWall = createSprayWall(req.body);
-  console.log(`[CREATE] Spray wall created: ID ${sprayWall.id}, "${sprayWall.nom}" at ${sprayWall.lieu} by ${req.user.email}`);
+  console.log(`[CREATE] Spray wall created: ID ${sprayWall.id}, "${sprayWall.nom}" at ${sprayWall.lieu} by ${req.user.username}`);
   res.json({ sprayWall });
 });
 app.patch('/api/sprayWalls/:id', authMiddleware, (req, res) => {
   const id = Number(req.params.id);
   const updated = updateSprayWall(id, req.body || {});
   if (!updated) return res.status(404).json({ error: 'Not found' });
-  console.log(`[UPDATE] Spray wall updated: ID ${id}, "${updated.nom}" by ${req.user.email}`);
+  console.log(`[UPDATE] Spray wall updated: ID ${id}, "${updated.nom}" by ${req.user.username}`);
   res.json({ sprayWall: updated });
 });
 app.delete('/api/sprayWalls/:id', authMiddleware, (req, res) => {

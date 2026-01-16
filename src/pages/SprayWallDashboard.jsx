@@ -58,8 +58,25 @@ export default function SprayWallDashboard() {
     enabled: !!sprayWallId,
   });
 
-  // Flag if any route references replaced holds
-  const hasReplacedHolds = [...boulders, ...boucles].some(item => item.prise_remplacee);
+  // Flag if any boulder or conti boucle has missing or replaced holds
+  function hasMissingOrReplacedHolds(items, allHolds) {
+    return items.some(item => {
+      const missingCount = item.holds && allHolds ? item.holds.filter(h => !allHolds.find(ah => ah.id === h.hold_id)).length : 0;
+      return Boolean(item.prise_remplacee) || missingCount > 0;
+    });
+  }
+
+  // Fetch all holds for this spray wall
+  const { data: allHolds = [] } = useQuery({
+    queryKey: ['holds', sprayWallId],
+    queryFn: async () => {
+      const { Hold } = await import("@/api/entities");
+      return Hold.filter({ spray_wall_id: sprayWallId });
+    },
+    enabled: !!sprayWallId,
+  });
+
+  const hasReplacedHolds = hasMissingOrReplacedHolds(boulders, allHolds) || hasMissingOrReplacedHolds(boucles, allHolds);
 
   const isAdmin = user?.is_global_admin;
   const isSubAdmin = user?.username === sprayWall?.sous_admin_username;
@@ -86,7 +103,7 @@ export default function SprayWallDashboard() {
           {hasReplacedHolds && (
             <div className="mt-3 bg-red-500/20 border-2 border-red-500 rounded-lg px-4 py-2 inline-block">
               <p className="text-red-100 font-semibold text-sm">
-                ⚠️ Des prises ont été supprimées - Vérifiez les blocs
+                ⚠️ Certaines prises ont été supprimées : il y a des blocs à modifier !
               </p>
             </div>
           )}

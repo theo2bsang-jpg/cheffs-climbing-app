@@ -99,7 +99,10 @@ export default function HoldSelector({
     if (showOrder) {
       newHolds.forEach((h, i) => h.ordre = i + 1);
     }
-    onHoldsChange(newHolds);
+    if (typeof window !== 'undefined' && window.toast) {
+      window.toast.info(`Prise ${holdId} retirée, reste: ${newHolds.length}`);
+    }
+    onHoldsChange([...newHolds]); // force new array for React state
   };
 
   const filteredHolds = availableHolds.filter(hold =>

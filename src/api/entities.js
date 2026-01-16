@@ -73,13 +73,23 @@ import {
 async function callServer(path, options = {}) {
   try {
     const defaultHeaders = { 'Content-Type': 'application/json' };
-    const doFetch = (opts) => fetch(path, { credentials: 'include', headers: { ...defaultHeaders, ...(opts.headers || {}) }, ...opts });
+    // ...debug removed...
+    const doFetch = (opts) => {
+      // ...debug removed...
+      return fetch(path, { credentials: 'include', headers: { ...defaultHeaders, ...(opts.headers || {}) }, ...opts });
+    };
     let res = await doFetch(options);
 
     // If unauthorized, try to refresh using HttpOnly refresh cookie and retry once
     if (res.status === 401 && !options._retry) {
       try {
         const refreshRes = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
+        if (refreshRes.status === 401) {
+          // Force immediate re-authentication if refresh fails with 401
+          try { localStorage.removeItem('currentUser'); } catch (e) {}
+          window.location.href = '/Login';
+          throw new Error('Session expired, please log in again');
+        }
         if (refreshRes.ok) {
           const refreshBody = await refreshRes.json().catch(() => ({}));
           if (refreshBody?.user) localStorage.setItem('currentUser', JSON.stringify(refreshBody.user));
@@ -135,20 +145,20 @@ export const Boulder = {
       const data = await callServer('/api/boulders', { method: 'GET' });
       const found = (data?.boulders ?? []).find(b => Number(b.id) === nid);
       if (found) {
-        console.debug('[Boulder.get] found via server', { id: nid, found });
+        // ...debug removed...
         return found;
       }
-      console.debug('[Boulder.get] not found on server, will fallback to local', { id: nid });
+      // ...debug removed...
     } catch (e) {
-      console.error('[Boulder.get] server fetch failed, falling back to local', e);
+      // ...debug removed...
       // ignore and fallback to local
     }
     const boulders = await filterBoulders({ id: nid });
     if (boulders.length === 0) {
-      console.error('[Boulder.get] not found locally either', { id: nid, localCount: boulders.length });
+      // ...debug removed...
       throw new Error('Not found');
     }
-    console.debug('[Boulder.get] found via local DB', { id: nid, boulder: boulders[0] });
+    // ...debug removed...
     return boulders[0];
   },
   /** Create a boulder; server-first then offline. */
@@ -162,20 +172,21 @@ export const Boulder = {
   },
   /** Update a boulder by id; server-first then offline. */
   update: async (id, data) => {
+    // ...debug removed...
     try {
+      // ...debug removed...
       const res = await callServer(`/api/boulders/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+      // ...debug removed...
       return res.boulder;
-    } catch {
+    } catch (e) {
+      // ...debug removed...
       return updateBoulder(id, data);
     }
   },
   /** Delete a boulder by id; server-first then offline. */
   delete: async (id) => {
-    try {
-      return await callServer(`/api/boulders/${id}`, { method: 'DELETE' });
-    } catch {
-      return deleteBoulder(id);
-    }
+    // Only allow server-side delete; do not fallback to local if unauthorized or error
+    return await callServer(`/api/boulders/${id}`, { method: 'DELETE' });
   },
 };
 
@@ -216,9 +227,12 @@ export const ContiBoucle = {
   /** Update a conti boucle by id. */
   update: async (id, data) => {
     try {
+      // ...debug removed...
       const res = await callServer(`/api/contiBoucles/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+      // ...debug removed...
       return res.contiBoucle;
-    } catch {
+    } catch (e) {
+      // ...debug removed...
       return updateContiBoucle(id, data);
     }
   },

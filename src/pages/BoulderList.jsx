@@ -68,9 +68,14 @@ export default function BoulderList() {
       try {
         const { User } = await import("@/api/entities");
         const current = await User.me();
+        if (!current) {
+          User.redirectToLogin();
+          return;
+        }
         setUser(current);
-      } catch (e) {
-        // ignore
+      } catch {
+        const { User } = await import("@/api/entities");
+        User.redirectToLogin();
       }
     };
     loadUser();
@@ -116,6 +121,10 @@ export default function BoulderList() {
     return item.holds.some(hold => !allHolds.find(h => h.id === hold.hold_id));
   };
 
+  // If user is not loaded (null), block rendering (avoid navigation flicker)
+  if (user === null) {
+    return null;
+  }
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4">
       <div className="max-w-2xl mx-auto pt-6 pb-20">

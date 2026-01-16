@@ -103,6 +103,7 @@ export default function ContiBoucleEdit() {
   // Save edits and clear replaced flag
   const updateMutation = useMutation({
     mutationFn: async () => {
+      const { ContiBoucle } = await import("@/api/entities");
       return await ContiBoucle.update(boucleId, {
         nom,
         ouvreur,
@@ -319,7 +320,9 @@ export default function ContiBoucleEdit() {
                   Retour
                 </Button>
                 <Button 
-                  onClick={() => updateMutation.mutate()}
+                  onClick={() => {
+                    updateMutation.mutate();
+                  }}
                   disabled={updateMutation.isLoading}
                   className="flex-1 bg-yellow-600 hover:bg-yellow-700"
                 >

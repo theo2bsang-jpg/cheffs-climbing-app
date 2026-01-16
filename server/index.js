@@ -1,3 +1,5 @@
+import dotenv from 'dotenv';
+dotenv.config();
 /** Express API for auth plus climbing entities with CSRF and rate limits. */
 import express from 'express';
 import cors from 'cors';

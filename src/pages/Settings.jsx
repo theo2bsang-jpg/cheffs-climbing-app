@@ -21,7 +21,7 @@ export default function Settings() {
   const [saveConfirmed, setSaveConfirmed] = useState(false);
   const [passwordConfirmed, setPasswordConfirmed] = useState(false);
 
-  const [adminTargetEmail, setAdminTargetEmail] = useState("");
+  const [adminTargetUsername, setAdminTargetUsername] = useState("");
   const [adminNewPassword, setAdminNewPassword] = useState("");
   const [adminConfirmPassword, setAdminConfirmPassword] = useState("");
   const [settingAdminPassword, setSettingAdminPassword] = useState(false);
@@ -73,13 +73,13 @@ export default function Settings() {
   };
 
   const handleAdminSetPassword = async () => {
-    if (!adminTargetEmail || !adminNewPassword) return toast.error("Veuillez remplir les champs");
+    if (!adminTargetUsername || !adminNewPassword) return toast.error("Veuillez remplir les champs");
     if (adminNewPassword !== adminConfirmPassword) return toast.error("Les nouveaux mots de passe ne correspondent pas");
     setSettingAdminPassword(true);
     try {
-      await User.setPasswordByEmail(adminTargetEmail, adminNewPassword);
+      await User.setPasswordByUsername(adminTargetUsername, adminNewPassword);
       toast.success("Mot de passe défini pour l'utilisateur");
-      setAdminTargetEmail("");
+      setAdminTargetUsername("");
       setAdminNewPassword("");
       setAdminConfirmPassword("");
     } catch (err) {
@@ -121,8 +121,8 @@ export default function Settings() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="settings-email">Email</Label>
-                <Input id="settings-email" value={user?.email} disabled className="bg-gray-50" />
+                <Label htmlFor="settings-username">Nom d'utilisateur</Label>
+                <Input id="settings-username" value={user?.username} disabled className="bg-gray-50" />
               </div>
               <div>
                 <Label htmlFor="settings-full-name">Nom complet</Label>
